@@ -7,10 +7,21 @@ export class HttpError extends Error {
   }
 }
 
-export async function fetchJson<T>(
+export function fetchJson<T>(url: string, init: RequestInit = {}, timeoutMs = 15000): Promise<T> {
+  return fetchWith(url, init, timeoutMs, (res) => res.json() as Promise<T>)
+}
+
+// Same retry/timeout behaviour as fetchJson, but yields the raw response body as
+// text — for providers whose upstream serves XML or HTML rather than JSON.
+export function fetchText(url: string, init: RequestInit = {}, timeoutMs = 15000): Promise<string> {
+  return fetchWith(url, init, timeoutMs, (res) => res.text())
+}
+
+async function fetchWith<T>(
   url: string,
-  init: RequestInit = {},
-  timeoutMs = 15000,
+  init: RequestInit,
+  timeoutMs: number,
+  parse: (res: Response) => Promise<T>,
 ): Promise<T> {
   const maxAttempts = 3
   let lastError: string | null = null
@@ -41,7 +52,7 @@ export async function fetchJson<T>(
         throw new HttpError(502, lastError)
       }
 
-      return (await res.json()) as T
+      return await parse(res)
     } finally {
       clearTimeout(timer)
     }
