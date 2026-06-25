@@ -6,7 +6,7 @@
     "dev:remote": "wrangler dev --remote",
     "build": "tsc --noEmit",
     "deploy:staging": "wrangler deploy --env staging",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy --env=\"\""
   },
   "dependencies": {
     "hono": "^4.12.27"

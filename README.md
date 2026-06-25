@@ -63,7 +63,8 @@ Then test the staging URL printed by Wrangler, for example
 `https://hakkutsu-staging.<your-subdomain>.workers.dev/api/works?tag=fantasy&limit=1`.
 
 Automatic deploys run from `.github/workflows/deploy-worker.yml` on pushes to
-`main`. The workflow runs `npm ci`, `npm run build`, then `wrangler deploy`.
+`main`. The workflow runs `npm ci`, `npm run build`, then
+`wrangler deploy --env=""` to target the top-level production Worker explicitly.
 Add these GitHub repository secrets before enabling the workflow:
 
 - `CLOUDFLARE_ACCOUNT_ID`
