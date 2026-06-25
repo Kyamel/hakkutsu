@@ -1,13 +1,15 @@
 const el = (id) => document.getElementById(id)
 
 const state = {
-  library: 'all', // 'all' (genres/tags/new) or 'free' (free-campaign feed)
-  source: 'tag', // within 'all': 'tag' (genre/tag browse) or 'new' (recent releases)
+  providers: [],
+  provider: 'comicwalker',
+  providerInfo: null,
+  taxonomy: { genres: [], tags: [], sorts: [] },
+  feed: null,
   genreId: null,
   genreSlug: null,
   tagId: null,
   tagSlug: null,
-  freeType: null, // within 'free': a category type, or null for all free titles
   sortBy: 'new',
   limit: 10,
   offset: 0,
@@ -21,112 +23,131 @@ async function getJson(url) {
   return body
 }
 
-async function loadTags() {
-  const all = await getJson('/api/tags')
-  renderChips('genres', all.filter((t) => t.type === 'genre'))
-  renderChips('tags', all.filter((t) => t.type === 'tag'))
+async function loadProviders() {
+  state.providers = await getJson('/api/providers')
+  el('library').innerHTML = state.providers
+    .map((provider) => `<option value="${provider.id}">${escapeHtml(provider.name)}</option>`)
+    .join('')
+}
+
+async function loadTaxonomy(providerId) {
+  const taxonomy = await getJson(`/api/taxonomy?provider=${encodeURIComponent(providerId)}`)
+  state.provider = taxonomy.provider.id
+  state.providerInfo = taxonomy.provider
+  state.taxonomy = taxonomy
+  state.sortBy = taxonomy.sorts[0]?.value ?? 'new'
+  el('library').value = state.provider
+  renderTaxonomy()
+}
+
+function renderTaxonomy() {
+  renderBrowse()
+  renderChips('genres', state.taxonomy.genres)
+  renderChips('tags', state.taxonomy.tags)
+  renderSortOptions()
+
+  el('browse-fieldset').hidden = !state.providerInfo.capabilities.new
+  el('genre-fieldset').hidden = state.taxonomy.genres.length === 0
+  el('tag-fieldset').hidden = state.taxonomy.tags.length === 0
+}
+
+function renderBrowse() {
+  el('browse').innerHTML = state.providerInfo.capabilities.new
+    ? `<button class="chip" data-feed="new">
+        <span class="chip-label">New releases</span>
+        <span class="chip-name">最新更新</span>
+      </button>`
+    : ''
 }
 
 function renderChips(containerId, items) {
   el(containerId).innerHTML = items
     .map(
-      (t) => `<button class="chip" data-id="${t.id}" data-type="${t.type}" data-slug="${t.slug}">
-        <span class="chip-label">${t.label}</span>
-        <span class="chip-name">${t.name}</span>
+      (item) => `<button class="chip" data-id="${item.id}" data-type="${item.type}" data-slug="${item.slug}">
+        <span class="chip-label">${escapeHtml(item.label)}</span>
+        <span class="chip-name">${escapeHtml(item.name)}</span>
       </button>`,
     )
     .join('')
 }
 
-async function loadFreeCategories() {
-  const cats = await getJson('/api/free/categories')
-  const all = `<button class="chip" data-free="">
-      <span class="chip-label">All free</span>
-      <span class="chip-name">すべて</span>
-    </button>`
-  el('free-cats').innerHTML =
-    all +
-    cats
-      .map(
-        (c) => `<button class="chip" data-free="${c.type}">
-        <span class="chip-label">${c.label}</span>
-        <span class="chip-name">${c.name}</span>
-      </button>`,
-      )
-      .join('')
+// Sorts whose scope list matches the current genre/tag selection.
+function applicableSorts() {
+  return state.taxonomy.sorts.filter(
+    (sort) =>
+      (state.genreId && sort.appliesTo.includes('genre')) ||
+      (state.tagId && sort.appliesTo.includes('tag')),
+  )
 }
 
-// Free and New are exclusive. Genre/tag browse allows one genre and one tag;
-// clicking a selected browse chip deselects it.
+function renderSortOptions() {
+  const sorts = applicableSorts()
+  if (!sorts.some((sort) => sort.value === state.sortBy)) {
+    state.sortBy = sorts[0]?.value ?? state.sortBy
+  }
+  el('sort').innerHTML = sorts
+    .map((sort) => `<option value="${sort.value}">${escapeHtml(sort.label)}</option>`)
+    .join('')
+  el('sort').value = state.sortBy
+  updateSortState(sorts)
+}
+
+function updateSortState(sorts = applicableSorts()) {
+  el('sort').disabled = Boolean(state.feed) || sorts.length <= 1
+}
+
 function selectChip(chip) {
-  if ('free' in chip.dataset) {
+  if ('feed' in chip.dataset) {
     document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
     chip.classList.add('selected')
-    state.library = 'free'
-    state.freeType = chip.dataset.free || null
-  } else {
-    state.library = 'all'
-    if (chip.dataset.source === 'new') {
-      document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
-      chip.classList.add('selected')
-      state.source = 'new'
+    state.feed = chip.dataset.feed
+    state.genreId = null
+    state.genreSlug = null
+    state.tagId = null
+    state.tagSlug = null
+    renderSortOptions()
+    return
+  }
+
+  state.feed = null
+  document.querySelector('.chip[data-feed].selected')?.classList.remove('selected')
+  const type = chip.dataset.type
+  const wasSelected = chip.classList.contains('selected')
+  document.querySelectorAll(`.chip[data-type="${CSS.escape(type)}"].selected`).forEach((c) => {
+    c.classList.remove('selected')
+  })
+
+  if (wasSelected) {
+    if (type === 'genre') {
       state.genreId = null
       state.genreSlug = null
+    } else {
       state.tagId = null
       state.tagSlug = null
+    }
+  } else {
+    chip.classList.add('selected')
+    if (type === 'genre') {
+      state.genreId = chip.dataset.id
+      state.genreSlug = chip.dataset.slug
     } else {
-      document.querySelector('.chip[data-source="new"]')?.classList.remove('selected')
-      state.source = 'tag'
-      const type = chip.dataset.type
-      const wasSelected = chip.classList.contains('selected')
-      document.querySelectorAll(`.chip[data-type="${CSS.escape(type)}"].selected`).forEach((c) => {
-        c.classList.remove('selected')
-      })
-
-      if (wasSelected) {
-        if (type === 'genre') {
-          state.genreId = null
-          state.genreSlug = null
-        } else {
-          state.tagId = null
-          state.tagSlug = null
-        }
-      } else {
-        chip.classList.add('selected')
-        if (type === 'genre') {
-          state.genreId = chip.dataset.id
-          state.genreSlug = chip.dataset.slug
-        } else {
-          state.tagId = chip.dataset.id
-          state.tagSlug = chip.dataset.slug
-        }
-      }
+      state.tagId = chip.dataset.id
+      state.tagSlug = chip.dataset.slug
     }
   }
-  el('library').value = state.library
-  togglePickers()
-  // Free and New feeds have a fixed order, so sort does not apply.
-  el('sort').disabled = state.library === 'free' || state.source === 'new'
-}
-
-function togglePickers() {
-  el('picker-all').hidden = state.library === 'free'
-  el('picker-free').hidden = state.library !== 'free'
+  renderSortOptions()
 }
 
 function worksUrl() {
-  const page = { limit: String(state.limit), offset: String(state.offset) }
-  if (state.library === 'free') {
-    const query = new URLSearchParams({ ...page, free: '1' })
-    if (state.freeType) query.set('tag', state.freeType)
-    return `/api/works?${query}`
-  }
-  if (state.source === 'new') {
-    return `/api/new?${new URLSearchParams(page)}`
-  }
-  const query = new URLSearchParams({ ...page, sortBy: state.sortBy })
+  const query = new URLSearchParams({
+    provider: state.provider,
+    limit: String(state.limit),
+    offset: String(state.offset),
+  })
+  if (state.feed) query.set('feed', state.feed)
   if (state.genreId) query.set('genreId', state.genreId)
   if (state.tagId) query.set('tagId', state.tagId)
+  if (!state.feed && state.sortBy) query.set('sortBy', state.sortBy)
   return `/api/works?${query}`
 }
 
@@ -136,15 +157,16 @@ async function loadWorks(preserveScroll = false) {
   const previousHeight = results.offsetHeight
   if (preserveScroll && previousHeight) results.style.minHeight = `${previousHeight}px`
 
-  if (state.library === 'all' && state.source === 'tag' && !state.genreId && !state.tagId) {
+  if (state.providerInfo.capabilities.requiresFilter && !state.feed && !state.genreId && !state.tagId) {
     state.total = 0
     results.classList.remove('free')
-    results.innerHTML = '<p class="muted">Select a genre, a tag, or both.</p>'
+    results.innerHTML = '<p class="muted">Select a genre, a tag, or a browse option.</p>'
     renderPager()
     restoreScroll(preserveScroll, scrollY)
     releaseResultsHeight(preserveScroll)
     return
   }
+
   results.innerHTML = '<p class="muted">Loading…</p>'
   restoreScroll(preserveScroll, scrollY)
   try {
@@ -176,7 +198,8 @@ function releaseResultsHeight(shouldRelease) {
 
 function renderWorks(works) {
   const results = el('results')
-  results.classList.toggle('free', state.library === 'free')
+  // Free-campaign results carry freeEpisodeCount and use portrait cover art.
+  results.classList.toggle('free', works.some((work) => work.freeEpisodeCount != null))
   if (!works.length) {
     results.innerHTML = '<p class="muted">No works.</p>'
     return
@@ -217,15 +240,11 @@ function renderPager() {
     return
   }
 
-  const parts = [
-    //pageButton('«', 1, { disabled: current === 1 }),
-    pageButton('‹', current - 1, { disabled: current === 1 }),
-  ]
+  const parts = [pageButton('‹', current - 1, { disabled: current === 1 })]
   for (const item of pageItems(current, totalPages)) {
     parts.push(item === '…' ? '<span class="page-gap">…</span>' : pageButton(item, item, { current: item === current }))
   }
   parts.push(pageButton('›', current + 1, { disabled: current === totalPages }))
-  //parts.push(pageButton('»', totalPages, { disabled: current === totalPages }))
   nav.innerHTML = parts.join('')
 }
 
@@ -236,12 +255,9 @@ function pageButton(label, page, opts = {}) {
   return `<button class="${cls}" ${attrs.join(' ')}>${label}</button>`
 }
 
-// First page, last page, and a window around the current page, with "…" filling
-// the gaps. The window slides near the edges so the button count stays roughly
-// constant (≈7 numbers) instead of collapsing on the first/last pages.
 function pageItems(current, total) {
-  const siblings = 2 // pages shown each side of current
-  const slots = siblings * 2 + 5 // first + last + 2 gaps + current ± siblings
+  const siblings = 2
+  const slots = siblings * 2 + 5
   if (total <= slots) return range(1, total)
 
   const start = Math.max(Math.min(current - siblings, total - siblings * 2 - 2), 2)
@@ -307,28 +323,24 @@ function renderLang(lang) {
 }
 
 function escapeHtml(s) {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 }
 
 function currentPage() {
   return Math.floor(state.offset / state.limit) + 1
 }
 
-// The URL is the shareable source of truth. Free uses ?free=1[&tag=<category>];
-// otherwise the readable ?tag=<slug> form ("new" for the recent-releases feed),
-// with ?tagId=<uuid> still accepted on read. Sort applies only to genre/tag.
 function writeUrl(replace = false) {
-  const params = new URLSearchParams({ page: String(currentPage()), limit: String(state.limit) })
-  if (state.library === 'free') {
-    params.set('free', '1')
-    if (state.freeType) params.set('tag', state.freeType)
-  } else if (state.source === 'new') {
-    params.set('tag', 'new')
-  } else {
-    if (state.genreSlug) params.set('genre', state.genreSlug)
-    if (state.tagSlug) params.set('tag', state.tagSlug)
-    params.set('sort', state.sortBy)
-  }
+  const params = new URLSearchParams({
+    provider: state.provider,
+    page: String(currentPage()),
+    limit: String(state.limit),
+  })
+  if (state.feed) params.set('feed', state.feed)
+  if (state.genreSlug) params.set('genre', state.genreSlug)
+  if (state.tagSlug) params.set('tag', state.tagSlug)
+  if (!state.feed && state.sortBy) params.set('sort', state.sortBy)
+
   const url = `?${params}`
   if (replace) history.replaceState(null, '', url)
   else history.pushState(null, '', url)
@@ -337,21 +349,18 @@ function writeUrl(replace = false) {
 function readUrl() {
   const params = new URLSearchParams(location.search)
   resetSelection()
-  if (params.get('free')) {
-    selectChip(findFreeChip(params.get('tag')))
-  } else if (params.get('tag') === 'new') {
-    const chip = document.querySelector('.chip[data-source="new"]')
-    if (!chip) return false
-    selectChip(chip)
-  } else {
-    const genreChip = findTypedChip('genre', params.get('genreId'), params.get('genre'))
-    const legacyChip = !genreChip ? findChip(params.get('tagId'), params.get('tag')) : null
-    const tagChip = findTypedChip('tag', params.get('tagId'), params.get('tag'))
-    if (!genreChip && !legacyChip && !tagChip) return false
-    if (genreChip) selectChip(genreChip)
-    if (legacyChip) selectChip(legacyChip)
-    if (tagChip && tagChip !== legacyChip) selectChip(tagChip)
+  state.provider = params.get('provider') || state.provider
+
+  const feed = params.get('feed')
+  if (feed) {
+    const chip = document.querySelector(`.chip[data-feed="${CSS.escape(feed)}"]`)
+    if (chip) selectChip(chip)
   }
+
+  const genreChip = findTypedChip('genre', params.get('genre'))
+  const tagChip = findTypedChip('tag', params.get('tag'))
+  if (genreChip) selectChip(genreChip)
+  if (tagChip) selectChip(tagChip)
 
   const limit = Number(params.get('limit'))
   if (validOption('limit', limit)) {
@@ -365,67 +374,54 @@ function readUrl() {
   }
 
   state.offset = (Math.max(1, Number(params.get('page')) || 1) - 1) * state.limit
-  return true
 }
 
 function resetSelection() {
   document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
-  state.library = 'all'
-  state.source = 'tag'
+  state.feed = null
   state.genreId = null
   state.genreSlug = null
   state.tagId = null
   state.tagSlug = null
-  state.freeType = null
 }
 
-// Accept a URL value only if it matches one of the control's own options.
 function validOption(selectId, value) {
-  return [...el(selectId).options].some((o) => o.value === String(value))
+  return [...el(selectId).options].some((option) => option.value === String(value))
 }
 
-// Locate a chip by exact id (tagId), or by slug / the "new" sentinel (tag).
-function findChip(tagId, tag) {
-  if (tagId) return document.querySelector(`.chip[data-id="${CSS.escape(tagId)}"]`)
-  if (tag === 'new') return document.querySelector('.chip[data-source="new"]')
-  if (tag) return document.querySelector(`.chip[data-slug="${CSS.escape(tag)}"]`)
-  return null
+function findTypedChip(type, slug) {
+  if (!slug) return null
+  return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-slug="${CSS.escape(slug)}"]`)
 }
 
-function findTypedChip(type, id, slug) {
-  if (id) return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-id="${CSS.escape(id)}"]`)
-  if (slug) return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-slug="${CSS.escape(slug)}"]`)
-  return null
+async function changeProvider(providerId, replaceUrl = false) {
+  resetSelection()
+  state.provider = providerId
+  state.offset = 0
+  await loadTaxonomy(providerId)
+  if (state.providerInfo.capabilities.new) {
+    const newChip = document.querySelector('.chip[data-feed="new"]')
+    if (newChip) selectChip(newChip)
+  }
+  writeUrl(replaceUrl)
+  await loadWorks(true)
 }
 
-// A free category chip, falling back to the "All free" chip for unknown/absent.
-function findFreeChip(type) {
-  return (
-    (type && document.querySelector(`.chip[data-free="${CSS.escape(type)}"]`)) ||
-    document.querySelector('.chip[data-free=""]')
-  )
-}
-
-// Selecting a tag (or changing a control) searches immediately — no button.
 function search() {
   state.offset = 0
   writeUrl()
   loadWorks(true)
 }
 
-for (const picker of document.querySelectorAll('.picker')) {
-  picker.addEventListener('click', (e) => {
-    const chip = e.target.closest('.chip')
-    if (!chip) return
-    selectChip(chip)
-    search()
-  })
-}
+el('picker').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip')
+  if (!chip) return
+  selectChip(chip)
+  search()
+})
 
 el('library').addEventListener('change', () => {
-  const picker = el('library').value === 'free' ? el('picker-free') : el('picker-all')
-  selectChip(picker.querySelector('.chip'))
-  search()
+  changeProvider(el('library').value)
 })
 
 el('sort').addEventListener('change', () => {
@@ -446,16 +442,23 @@ el('pager').addEventListener('click', (e) => {
   loadWorks(true)
 })
 
-window.addEventListener('popstate', () => {
-  if (readUrl()) loadWorks()
+window.addEventListener('popstate', async () => {
+  const params = new URLSearchParams(location.search)
+  const provider = params.get('provider') || state.providers[0]?.id || 'comicwalker'
+  await loadTaxonomy(provider)
+  readUrl()
+  loadWorks()
 })
 
 async function init() {
-  await Promise.all([loadTags(), loadFreeCategories()])
-  if (!readUrl()) {
-    // Bare root: fall back to the default view (New releases) and normalize the
-    // URL so it is never an empty page.
-    selectChip(document.querySelector('.chip'))
+  await loadProviders()
+  const params = new URLSearchParams(location.search)
+  const provider = params.get('provider') || state.providers[0]?.id || 'comicwalker'
+  await loadTaxonomy(provider)
+  readUrl()
+  if (!location.search && state.providerInfo.capabilities.new) {
+    const newChip = document.querySelector('.chip[data-feed="new"]')
+    if (newChip) selectChip(newChip)
     writeUrl(true)
   }
   loadWorks()

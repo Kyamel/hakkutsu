@@ -1,5 +1,27 @@
-import type { FreeCategory, TagInfo } from '../config.js'
 import type { WorksPage } from '../types.js'
+
+export interface TaxonomyItem {
+  id: string
+  name: string
+  label: string
+  type: 'genre' | 'tag'
+  slug: string
+}
+
+// Browsing dimensions a sort can apply to; an empty subset is never used.
+export type SortScope = 'genre' | 'tag'
+
+export interface SortOption {
+  value: string
+  label: string
+  appliesTo: SortScope[]
+}
+
+export interface ProviderTaxonomy {
+  genres: TaxonomyItem[]
+  tags: TaxonomyItem[]
+  sorts: SortOption[]
+}
 
 export interface ProviderSummary {
   id: string
@@ -8,9 +30,13 @@ export interface ProviderSummary {
   capabilities: {
     genres: boolean
     tags: boolean
-    free: boolean
+    sorts: SortOption[]
     new: boolean
-    popularitySort: boolean
+    requiresFilter: boolean
+  }
+  ttl: {
+    metadata: number
+    search: number
   }
 }
 
@@ -22,26 +48,14 @@ export interface Pagination {
 export interface SearchWorksParams extends Pagination {
   genreId?: string
   tagId?: string
+  tag?: string
+  feed?: string
   sortBy: string
-}
-
-export interface ListNewParams extends Pagination {
-  sortBy: string
-}
-
-export interface ListFreeParams extends Pagination {
-  filterType?: string
 }
 
 export interface MangaProvider {
   summary: ProviderSummary
-  sorts: readonly string[]
-  newSort: string
-  tags(): TagInfo[]
-  tagBySlug(slug: string): TagInfo | undefined
-  freeCategories(): FreeCategory[]
-  isFreeCategory(type: string): boolean
-  searchWorks(params: SearchWorksParams): Promise<WorksPage>
-  listNew(params: ListNewParams): Promise<WorksPage>
-  listFree(params: ListFreeParams): Promise<WorksPage>
+  defaultSort: string
+  taxonomy: ProviderTaxonomy
+  search(params: SearchWorksParams): Promise<WorksPage>
 }

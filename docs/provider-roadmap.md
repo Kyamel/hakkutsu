@@ -1,7 +1,7 @@
 # Provider roadmap
 
-Hakkutsu should grow as a provider-based discovery API. The current provider is
-ComicWalker; planned providers, in priority order:
+Hakkutsu should grow as a provider-based discovery API. The first two providers
+are ComicWalker and ComicWalker Free; planned next providers, in priority order:
 
 1. ComicWalker
 2. Nico Nico Manga
@@ -19,6 +19,7 @@ Each provider should expose a small normalized shape:
 
 - Provider identity: `id`, `name`, `site`.
 - Capabilities: genres, tags, free feed, new feed, popularity sort.
+- Taxonomy: provider-owned `genres`, optional `tags`, and available `sorts`.
 - Search filters: at minimum one provider-specific tag or genre, when available.
 - Normalized works: provider id/name, provider work id/code, title, URL,
   thumbnail, language, serialization status, optional publisher, optional
@@ -27,6 +28,33 @@ Each provider should expose a small normalized shape:
 Provider-specific details should stay behind the provider module. The API should
 prefer stable query params like `provider`, `genre`, `tag`, `genreId`, and
 `tagId`.
+
+## Adding a provider
+
+Provider modules own their behavior. Adding a provider should not require edits
+to API route handlers or Worker cache logic.
+
+Steps:
+
+1. Create a provider module in `src/providers/`.
+2. Export an object that satisfies `MangaProvider`.
+3. Register that object in `src/providers/index.ts`.
+
+After registration:
+
+- `GET /api/providers` lists it automatically.
+- `GET /api/taxonomy?provider=<id>` returns its genres, tags, and sort options.
+- `GET /api/works?provider=<id>` uses its `search()` implementation.
+- Worker cache TTL comes from `provider.summary.ttl.search` and
+  `provider.summary.ttl.metadata`.
+
+ComicWalker is intentionally split into two providers now:
+
+- `comicwalker`: regular genre/tag/new-release search.
+- `comicwalker-free`: free-campaign search.
+
+That split is a practical test of the provider contract. The API route handlers
+do not need separate ComicWalker-free branching for search.
 
 ## Popularity signal idea
 

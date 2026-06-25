@@ -14,40 +14,25 @@
       </div>
     </header>
 
-    <section class="picker" id="picker-all">
-      <fieldset>
+    <section class="picker" id="picker">
+      <fieldset id="browse-fieldset">
         <legend>Browse</legend>
-        <div class="chips">
-          <button class="chip" data-source="new">
-            <span class="chip-label">New releases</span>
-            <span class="chip-name">最新更新</span>
-          </button>
-        </div>
+        <div id="browse" class="chips"></div>
       </fieldset>
-      <fieldset>
+      <fieldset id="genre-fieldset">
         <legend>Genres</legend>
         <div id="genres" class="chips"></div>
       </fieldset>
-      <fieldset>
+      <fieldset id="tag-fieldset">
         <legend>Tags</legend>
         <div id="tags" class="chips"></div>
-      </fieldset>
-    </section>
-
-    <section class="picker" id="picker-free" hidden>
-      <fieldset>
-        <legend>Free categories</legend>
-        <div id="free-cats" class="chips"></div>
       </fieldset>
     </section>
 
     <section class="controls">
       <label>
         Library
-        <select id="library">
-          <option value="all">Default</option>
-          <option value="free">Free</option>
-        </select>
+        <select id="library"></select>
       </label>
       <label>
         Sort

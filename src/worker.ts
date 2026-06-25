@@ -1,4 +1,7 @@
 import { app } from './app.js'
+import { providerCacheTtl } from './providers/index.js'
+
+const CACHE_VERSION = 'taxonomy-v1'
 
 interface Env {
   ASSETS: {
@@ -38,17 +41,14 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
 function cacheTtl(request: Request): number | null {
   if (request.method !== 'GET') return null
 
-  const { pathname } = new URL(request.url)
-  if (pathname === '/api/providers') return 86400
-  if (pathname === '/api/tags' || pathname === '/api/free/categories') return 86400
-  if (pathname === '/api/openapi.json') return 86400
-  if (pathname === '/api/works' || pathname === '/api/new') return 600
-  if (pathname === '/api/match') return 21600
-  return null
+  const { pathname, searchParams } = new URL(request.url)
+  const providerId = searchParams.get('provider') ?? undefined
+  return providerCacheTtl(pathname, providerId)
 }
 
 function cacheRequest(request: Request): Request {
   const url = new URL(request.url)
+  url.searchParams.set('__cacheVersion', CACHE_VERSION)
   url.searchParams.sort()
   return new Request(url.toString(), request)
 }

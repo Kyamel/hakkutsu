@@ -8,7 +8,7 @@ export const ErrorSchema = z
   })
   .openapi('Error')
 
-export const TagSchema = z
+export const TaxonomyItemSchema = z
   .object({
     id: z.string().openapi({
       example: '018a262f-986a-7cca-8c8e-4c8d4b229a94',
@@ -26,21 +26,22 @@ export const TagSchema = z
       example: 'fantasy',
     }),
   })
-  .openapi('Tag')
+  .openapi('TaxonomyItem')
 
-export const FreeCategorySchema = z
+export const SortOptionSchema = z
   .object({
-    type: z.string().openapi({
-      example: 'fantasy',
-    }),
-    name: z.string().openapi({
-      example: 'ファンタジー',
+    value: z.string().openapi({
+      example: 'new',
     }),
     label: z.string().openapi({
-      example: 'Fantasy',
+      example: 'Recently updated',
+    }),
+    appliesTo: z.array(z.enum(['genre', 'tag'])).openapi({
+      example: ['genre', 'tag'],
+      description: 'Browsing dimensions this sort applies to.',
     }),
   })
-  .openapi('FreeCategory')
+  .openapi('SortOption')
 
 export const ProviderSchema = z
   .object({
@@ -50,7 +51,7 @@ export const ProviderSchema = z
     name: z.string().openapi({
       example: 'ComicWalker',
     }),
-    site: z.string().url().openapi({
+    site: z.url().openapi({
       example: 'https://comic-walker.com',
     }),
     capabilities: z.object({
@@ -60,18 +61,38 @@ export const ProviderSchema = z
       tags: z.boolean().openapi({
         example: true,
       }),
-      free: z.boolean().openapi({
-        example: true,
+      sorts: SortOptionSchema.array().openapi({
+        example: [
+          { value: 'new', label: 'Recently updated' },
+          { value: 'popularity', label: 'Popularity' },
+        ],
       }),
       new: z.boolean().openapi({
         example: true,
       }),
-      popularitySort: z.boolean().openapi({
+      requiresFilter: z.boolean().openapi({
         example: true,
+      }),
+    }),
+    ttl: z.object({
+      metadata: z.number().int().openapi({
+        example: 86400,
+      }),
+      search: z.number().int().openapi({
+        example: 600,
       }),
     }),
   })
   .openapi('Provider')
+
+export const TaxonomySchema = z
+  .object({
+    provider: ProviderSchema,
+    genres: z.array(TaxonomyItemSchema),
+    tags: z.array(TaxonomyItemSchema),
+    sorts: z.array(SortOptionSchema),
+  })
+  .openapi('Taxonomy')
 
 export const WorkSchema = z
   .object({
@@ -246,39 +267,20 @@ export const WorksQuerySchema = z.object({
     },
     example: '018b8a02-f3dc-7095-a085-45594e3008b7',
   }),
-  type: z.enum(['genre', 'tag']).optional().openapi({
-    param: {
-      name: 'type',
-      in: 'query',
-    },
-    example: 'tag',
-  }),
-  sortBy: z.enum(['new', 'popularity']).optional().openapi({
+  sortBy: z.string().optional().openapi({
     param: {
       name: 'sortBy',
       in: 'query',
     },
     example: 'new',
   }),
-  free: z.string().optional().openapi({
+  feed: z.string().optional().openapi({
     param: {
-      name: 'free',
+      name: 'feed',
       in: 'query',
     },
-    example: '1',
+    example: 'new',
   }),
-})
-
-export const NewQuerySchema = z.object({
-  provider: z.string().optional().openapi({
-    param: {
-      name: 'provider',
-      in: 'query',
-    },
-    example: 'comicwalker',
-  }),
-  limit: limitQuery,
-  offset: offsetQuery,
 })
 
 export const MatchQuerySchema = z.object({

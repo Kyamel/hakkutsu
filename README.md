@@ -36,8 +36,7 @@ in the old Node dev server because Node uses a different local trust store, and
 it also works in the deployed Cloudflare Worker.
 
 Use `npm run dev` for static assets and API routes that do not call
-ComicWalker. For `/api/works` and `/api/new`, test on the edge with the staging
-Worker:
+ComicWalker. For `/api/works`, test on the edge with the staging Worker:
 
 ```
 npm run deploy:staging
@@ -77,7 +76,7 @@ Add these GitHub repository secrets before enabling the workflow:
 
 ## How it works
 
-1. Browse comic-walker works by tag (paginated, sortable by recency/popularity).
+1. Browse provider works by genre/tag (paginated, sortable by provider options).
 2. Click a work to look it up on MangaDex by its Japanese title.
 3. See the matched title, link, and chapter count + last-chapter date per
    translated language (English highlighted).
@@ -90,23 +89,22 @@ Interactive API docs are available at:
 
 - `GET /api/docs` — Swagger UI.
 - `GET /api/openapi.json` — generated OpenAPI document.
-- `GET /api/providers` — available source providers and their capabilities.
+- `GET /api/providers` — available source providers, capabilities, and cache TTLs.
 
 The OpenAPI document is generated from the route definitions and Zod schemas in
 `src/api/routes.ts` and `src/api/schemas.ts`.
 
-- `GET /api/tags?provider=` — curated provider genres/tags, each with a `slug`.
-- `GET /api/works?genre=&tag=&genreId=&tagId=&limit=&offset=&sortBy=` —
-  paginated works for a genre, a tag, or one of each together. Prefer
-  `genre=<slug>&tag=<slug>` using the lower-case slugs from `/api/tags`.
-  `sortBy` is `new` (recently updated) or `popularity`.
-- `GET /api/new?limit=&offset=` — the recently updated series feed, independent
-  of any tag. Same `WorksPage` shape as `/api/works`.
-- `GET /api/works?free=1&tag=&limit=&offset=` — the free-campaign feed. `tag` is
-  a free category (see `/api/free/categories`); omit it for all free titles.
+- `GET /api/taxonomy?provider=` — provider genres, tags, and sort options. Tags
+  may be an empty list when the provider does not support them.
+- `GET /api/works?provider=&genre=&tag=&genreId=&tagId=&feed=&limit=&offset=&sortBy=` —
+  the canonical search endpoint. `provider` defaults to `comicwalker`; use
+  `provider=comicwalker-free` for the free-campaign feed. `feed=new` lists
+  recent ComicWalker updates. Prefer `genre=<slug>&tag=<slug>` using the
+  lower-case slugs from `/api/taxonomy`.
+- `GET /api/works?provider=comicwalker-free&tag=&limit=&offset=` — the
+  free-campaign provider. `tag` is one of its provider-owned taxonomy tags from
+  `/api/taxonomy?provider=comicwalker-free`; omit it for all free titles.
   Results carry `freeEpisodeCount`.
-- `GET /api/free/categories` — the 12 free-campaign categories (own set, keyed
-  by string `type`, distinct from the genre/tag taxonomy).
 - `GET /api/match?title=` — best MangaDex match for a title, with per-language
   availability. Returns `{ matched: false }` when nothing matches confidently.
 
@@ -114,10 +112,13 @@ The OpenAPI document is generated from the route definitions and Zod schemas in
 
 ```
 src/
-  config.ts          endpoints, headers, curated tags, match threshold
+  config.ts          MangaDex config + match threshold
   types.ts           shared domain types
   api/routes.ts      HTTP layer (Hono)
-  services/          comicwalker, mangadex, matcher
+  providers/         registry + shared contract/helpers, and one
+    <name>/          self-contained folder per provider:
+                       config.ts, taxonomy.ts, queries.ts, index.ts
+  services/          mangadex, matcher (MangaDex lookup side)
   lib/               http, title normalization/matching, concurrency
 public/              vanilla HTML/CSS/JS client
 ```
@@ -132,5 +133,5 @@ full title and the head, so edition-specific subtitles don't break the match.
 ## Possible next steps
 
 - Local cache (SQLite) so repeated MangaDex lookups are cheap.
-- Refresh the tag list from comic-walker instead of shipping a static set.
+- Refresh provider taxonomies from upstream sources instead of shipping static sets.
 - React SPA against the same API; deploy the API publicly.
