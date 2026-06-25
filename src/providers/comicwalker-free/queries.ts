@@ -44,6 +44,7 @@ function toFreeWork(item: FreeItem): Work {
     title: item.title,
     url: `${comicWalkerFree.base}/detail/${item.code}`,
     thumbnail: item.thumbnail,
+    thumbnailAspectRatio: 5 / 7, // free-campaign covers are portrait
     language: 'ja',
     serializationStatus: 'unknown',
     freeEpisodeCount: item.freeEpisodeCount,

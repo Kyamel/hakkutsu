@@ -1,13 +1,14 @@
 import type { MangaProvider, SortOption } from '../types.js'
+import { browseGroup, feedGroup } from '../taxonomy.js'
 import { comicWalker } from './config.js'
 import { listNew, searchByTag } from './queries.js'
-import { comicWalkerTaxonomy } from './taxonomy.js'
+import { comicWalkerGenres, comicWalkerTags } from './taxonomy.js'
 
 const newFeedSort = 'updateWithCutoff'
 
 const sorts: SortOption[] = [
-  { value: 'new', label: 'Recently updated', appliesTo: ['genre', 'tag'] },
-  { value: 'popularity', label: 'Popularity', appliesTo: ['genre', 'tag'] },
+  { value: 'new', label: 'Recently updated', appliesTo: ['genres', 'tags'] },
+  { value: 'popularity', label: 'Popularity', appliesTo: ['genres', 'tags'] },
 ]
 
 export const comicWalkerProvider: MangaProvider = {
@@ -18,7 +19,6 @@ export const comicWalkerProvider: MangaProvider = {
     capabilities: {
       genres: true,
       tags: true,
-      sorts,
       new: true,
       requiresFilter: true,
     },
@@ -29,9 +29,11 @@ export const comicWalkerProvider: MangaProvider = {
   },
   defaultSort: 'new',
   taxonomy: {
-    genres: comicWalkerTaxonomy.filter((item) => item.type === 'genre'),
-    tags: comicWalkerTaxonomy.filter((item) => item.type === 'tag'),
-    sorts,
+    groups: [
+      feedGroup('new', 'New releases'),
+      browseGroup('genres', 'Genres', comicWalkerGenres, sorts),
+      browseGroup('tags', 'Tags', comicWalkerTags, sorts),
+    ],
   },
   search: (params) => {
     if (params.feed === 'new') {

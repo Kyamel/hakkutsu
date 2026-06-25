@@ -219,14 +219,10 @@ legend {
 
 .card img {
   width: 100%;
+  /* aspect-ratio is set inline per work from the API's thumbnailAspectRatio. */
   aspect-ratio: 16 / 9;
   object-fit: cover;
   display: block;
-}
-
-/* Free-campaign results use portrait cover images instead of 16:9 banners. */
-.grid.free .card img {
-  aspect-ratio: 5 / 7;
 }
 
 .free-count {

@@ -118,14 +118,14 @@ api.openapi(worksRoute, async (c) => {
 
   const limit = query.limit ?? 10
   const offset = query.offset ?? 0
-  const genreBySlug = findTaxonomyItem(provider, query.genre, 'genre')
-  const tagBySlug = findTaxonomyItem(provider, query.tag, 'tag')
+  const genreBySlug = findTaxonomyItem(provider, query.genre, 'genres')
+  const tagBySlug = findTaxonomyItem(provider, query.tag, 'tags')
   const genreId = query.genreId ?? genreBySlug?.id
   const tagId = query.tagId ?? tagBySlug?.id
-  const sortBy =
-    query.sortBy && provider.taxonomy.sorts.some((sort) => sort.value === query.sortBy)
-      ? query.sortBy
-      : provider.defaultSort
+  const knownSort = provider.taxonomy.groups.some((group) =>
+    group.sorts.some((sort) => sort.value === query.sortBy),
+  )
+  const sortBy = query.sortBy && knownSort ? query.sortBy : provider.defaultSort
 
   if (!genreId && !tagId && !query.feed && provider.summary.capabilities.requiresFilter) {
     return c.json({ error: 'genreId, genre, tagId, tag, or feed is required' }, 400)

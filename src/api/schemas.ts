@@ -19,9 +19,6 @@ export const TaxonomyItemSchema = z
     label: z.string().openapi({
       example: 'Fantasy',
     }),
-    type: z.enum(['genre', 'tag']).openapi({
-      example: 'genre',
-    }),
     slug: z.string().openapi({
       example: 'fantasy',
     }),
@@ -36,12 +33,33 @@ export const SortOptionSchema = z
     label: z.string().openapi({
       example: 'Recently updated',
     }),
-    appliesTo: z.array(z.enum(['genre', 'tag'])).openapi({
-      example: ['genre', 'tag'],
-      description: 'Browsing dimensions this sort applies to.',
+    appliesTo: z.array(z.enum(['genres', 'tags', 'new'])).openapi({
+      example: ['genres', 'tags'],
+      description: 'Browsing dimensions this sort applies to (capability keys).',
     }),
   })
   .openapi('SortOption')
+
+export const BrowseGroupSchema = z
+  .object({
+    key: z.enum(['genres', 'tags', 'new']).openapi({
+      example: 'genres',
+    }),
+    label: z.string().openapi({
+      example: 'Genres',
+    }),
+    mode: z.enum(['browse', 'feed']).openapi({
+      example: 'browse',
+      description: '"browse" lists items to navigate into; "feed" is a toggleable feed.',
+    }),
+    param: z.enum(['genreId', 'tagId']).optional().openapi({
+      example: 'genreId',
+      description: 'Works-query param an item maps to (secondary filter for feed groups).',
+    }),
+    items: z.array(TaxonomyItemSchema),
+    sorts: z.array(SortOptionSchema),
+  })
+  .openapi('BrowseGroup')
 
 export const ProviderSchema = z
   .object({
@@ -60,12 +78,6 @@ export const ProviderSchema = z
       }),
       tags: z.boolean().openapi({
         example: true,
-      }),
-      sorts: SortOptionSchema.array().openapi({
-        example: [
-          { value: 'new', label: 'Recently updated' },
-          { value: 'popularity', label: 'Popularity' },
-        ],
       }),
       new: z.boolean().openapi({
         example: true,
@@ -88,9 +100,7 @@ export const ProviderSchema = z
 export const TaxonomySchema = z
   .object({
     provider: ProviderSchema,
-    genres: z.array(TaxonomyItemSchema),
-    tags: z.array(TaxonomyItemSchema),
-    sorts: z.array(SortOptionSchema),
+    groups: z.array(BrowseGroupSchema),
   })
   .openapi('Taxonomy')
 
@@ -117,6 +127,10 @@ export const WorkSchema = z
     thumbnail: z.string().openapi({
       example: 'https://cdn.comic-walker.com/cover/example.jpg',
     }),
+    thumbnailAspectRatio: z.number().positive().optional().openapi({
+      example: 1.7778,
+      description: 'Cover width/height, so the client can size art without guessing.',
+    }),
     language: z.string().openapi({
       example: 'ja',
     }),
@@ -137,8 +151,9 @@ export const WorkSchema = z
 
 export const WorksPageSchema = z
   .object({
-    total: z.number().int().openapi({
+    total: z.number().int().nullable().openapi({
       example: 123,
+      description: 'Total works across all pages, or null when the provider exposes no count.',
     }),
     limit: z.number().int().openapi({
       example: 10,

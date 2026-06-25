@@ -7,6 +7,7 @@ export interface Work {
   title: string // Japanese title
   url: string // provider detail page
   thumbnail: string
+  thumbnailAspectRatio?: number // cover width/height, so the client can size art without guessing
   language: string
   serializationStatus: string
   publisher?: string
@@ -15,7 +16,7 @@ export interface Work {
 }
 
 export interface WorksPage {
-  total: number // total works for the tag, across all pages
+  total: number | null // total works across all pages; null when the provider exposes no count
   limit: number // page size
   offset: number // index of the first item in this page
   hasPrevious: boolean

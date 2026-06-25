@@ -4,16 +4,16 @@ const state = {
   providers: [],
   provider: 'comicwalker',
   providerInfo: null,
-  taxonomy: { genres: [], tags: [], sorts: [] },
-  feed: null,
-  genreId: null,
-  genreSlug: null,
-  tagId: null,
-  tagSlug: null,
+  groups: [],
+  feed: null, // active feed key, e.g. 'new'
+  filter: null, // { group, param, id, slug } — selected browse item or feed filter
   sortBy: 'new',
   limit: 10,
   offset: 0,
-  total: 0,
+  total: 0, // number, or null when the provider exposes no count (cursor-style pager)
+  count: 0, // items in the current page
+  hasPrevious: false,
+  hasNext: false,
 }
 
 async function getJson(url) {
@@ -34,50 +34,61 @@ async function loadTaxonomy(providerId) {
   const taxonomy = await getJson(`/api/taxonomy?provider=${encodeURIComponent(providerId)}`)
   state.provider = taxonomy.provider.id
   state.providerInfo = taxonomy.provider
-  state.taxonomy = taxonomy
-  state.sortBy = taxonomy.sorts[0]?.value ?? 'new'
+  state.groups = taxonomy.groups
+  state.sortBy = firstSortValue()
   el('library').value = state.provider
-  renderTaxonomy()
+  renderGroups()
 }
 
-function renderTaxonomy() {
-  renderBrowse()
-  renderChips('genres', state.taxonomy.genres)
-  renderChips('tags', state.taxonomy.tags)
-  renderSortOptions()
-
-  el('browse-fieldset').hidden = !state.providerInfo.capabilities.new
-  el('genre-fieldset').hidden = state.taxonomy.genres.length === 0
-  el('tag-fieldset').hidden = state.taxonomy.tags.length === 0
+// First sort offered by any group; renderSortOptions corrects it per selection.
+function firstSortValue() {
+  for (const group of state.groups) {
+    if (group.sorts[0]) return group.sorts[0].value
+  }
+  return 'new'
 }
 
-function renderBrowse() {
-  el('browse').innerHTML = state.providerInfo.capabilities.new
-    ? `<button class="chip" data-feed="new">
-        <span class="chip-label">New releases</span>
-        <span class="chip-name">最新更新</span>
-      </button>`
-    : ''
+// One fieldset per group: feed groups render a toggle (+ optional filter chips),
+// browse groups render their items as chips.
+function renderGroups() {
+  el('picker').innerHTML = state.groups.map(groupHtml).join('')
 }
 
-function renderChips(containerId, items) {
-  el(containerId).innerHTML = items
-    .map(
-      (item) => `<button class="chip" data-id="${item.id}" data-type="${item.type}" data-slug="${item.slug}">
-        <span class="chip-label">${escapeHtml(item.label)}</span>
-        <span class="chip-name">${escapeHtml(item.name)}</span>
-      </button>`,
-    )
-    .join('')
+function groupHtml(group) {
+  return group.mode === 'feed' ? feedGroupHtml(group) : browseGroupHtml(group)
 }
 
-// Sorts whose scope list matches the current genre/tag selection.
+function feedGroupHtml(group) {
+  const toggle = `<button class="chip" data-feed="${escapeHtml(group.key)}">
+      <span class="chip-label">${escapeHtml(group.label)}</span>
+    </button>`
+  const filters = group.items.map((item) => itemChipHtml(group, item)).join('')
+  return `<fieldset><legend>Browse</legend><div class="chips">${toggle}${filters}</div></fieldset>`
+}
+
+function browseGroupHtml(group) {
+  if (!group.items.length) return ''
+  const chips = group.items.map((item) => itemChipHtml(group, item)).join('')
+  return `<fieldset><legend>${escapeHtml(group.label)}</legend><div class="chips">${chips}</div></fieldset>`
+}
+
+function itemChipHtml(group, item) {
+  return `<button class="chip" data-group="${escapeHtml(group.key)}" data-param="${escapeHtml(group.param)}" data-id="${escapeHtml(item.id)}" data-slug="${escapeHtml(item.slug)}">
+      <span class="chip-label">${escapeHtml(item.label)}</span>
+      <span class="chip-name">${escapeHtml(item.name)}</span>
+    </button>`
+}
+
+function activeGroup() {
+  const key = state.feed ?? state.filter?.group
+  return key ? state.groups.find((group) => group.key === key) : null
+}
+
+// Sorts of the active group that declare they apply to that dimension.
 function applicableSorts() {
-  return state.taxonomy.sorts.filter(
-    (sort) =>
-      (state.genreId && sort.appliesTo.includes('genre')) ||
-      (state.tagId && sort.appliesTo.includes('tag')),
-  )
+  const group = activeGroup()
+  if (!group) return []
+  return group.sorts.filter((sort) => sort.appliesTo.includes(group.key))
 }
 
 function renderSortOptions() {
@@ -89,53 +100,47 @@ function renderSortOptions() {
     .map((sort) => `<option value="${sort.value}">${escapeHtml(sort.label)}</option>`)
     .join('')
   el('sort').value = state.sortBy
-  updateSortState(sorts)
-}
-
-function updateSortState(sorts = applicableSorts()) {
-  el('sort').disabled = Boolean(state.feed) || sorts.length <= 1
+  el('sort').disabled = sorts.length <= 1
 }
 
 function selectChip(chip) {
   if ('feed' in chip.dataset) {
-    document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
-    chip.classList.add('selected')
-    state.feed = chip.dataset.feed
-    state.genreId = null
-    state.genreSlug = null
-    state.tagId = null
-    state.tagSlug = null
-    renderSortOptions()
+    const feed = chip.dataset.feed
+    const wasOn = state.feed === feed && !state.filter
+    resetSelection()
+    if (!wasOn) state.feed = feed
+    onSelectionChanged()
     return
   }
 
-  state.feed = null
-  document.querySelector('.chip[data-feed].selected')?.classList.remove('selected')
-  const type = chip.dataset.type
-  const wasSelected = chip.classList.contains('selected')
-  document.querySelectorAll(`.chip[data-type="${CSS.escape(type)}"].selected`).forEach((c) => {
-    c.classList.remove('selected')
-  })
-
-  if (wasSelected) {
-    if (type === 'genre') {
-      state.genreId = null
-      state.genreSlug = null
-    } else {
-      state.tagId = null
-      state.tagSlug = null
-    }
-  } else {
-    chip.classList.add('selected')
-    if (type === 'genre') {
-      state.genreId = chip.dataset.id
-      state.genreSlug = chip.dataset.slug
-    } else {
-      state.tagId = chip.dataset.id
-      state.tagSlug = chip.dataset.slug
-    }
+  const { group, param, id, slug } = chip.dataset
+  const groupDef = state.groups.find((g) => g.key === group)
+  const same = state.filter && state.filter.group === group && state.filter.id === id
+  resetSelection()
+  if (!same) {
+    state.filter = { group, param, id, slug }
+    if (groupDef?.mode === 'feed') state.feed = group
   }
+  onSelectionChanged()
+}
+
+function onSelectionChanged() {
+  applySelectionClasses()
   renderSortOptions()
+}
+
+function applySelectionClasses() {
+  document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
+  if (state.feed) {
+    document.querySelector(`.chip[data-feed="${CSS.escape(state.feed)}"]`)?.classList.add('selected')
+  }
+  if (state.filter) {
+    document
+      .querySelector(
+        `.chip[data-group="${CSS.escape(state.filter.group)}"][data-slug="${CSS.escape(state.filter.slug)}"]`,
+      )
+      ?.classList.add('selected')
+  }
 }
 
 function worksUrl() {
@@ -145,9 +150,8 @@ function worksUrl() {
     offset: String(state.offset),
   })
   if (state.feed) query.set('feed', state.feed)
-  if (state.genreId) query.set('genreId', state.genreId)
-  if (state.tagId) query.set('tagId', state.tagId)
-  if (!state.feed && state.sortBy) query.set('sortBy', state.sortBy)
+  if (state.filter) query.set(state.filter.param, state.filter.id)
+  if (state.sortBy && applicableSorts().length) query.set('sortBy', state.sortBy)
   return `/api/works?${query}`
 }
 
@@ -157,9 +161,9 @@ async function loadWorks(preserveScroll = false) {
   const previousHeight = results.offsetHeight
   if (preserveScroll && previousHeight) results.style.minHeight = `${previousHeight}px`
 
-  if (state.providerInfo.capabilities.requiresFilter && !state.feed && !state.genreId && !state.tagId) {
+  if (state.providerInfo.capabilities.requiresFilter && !state.feed && !state.filter) {
     state.total = 0
-    results.classList.remove('free')
+    state.count = 0
     results.innerHTML = '<p class="muted">Select a genre, a tag, or a browse option.</p>'
     renderPager()
     restoreScroll(preserveScroll, scrollY)
@@ -172,6 +176,7 @@ async function loadWorks(preserveScroll = false) {
   try {
     const page = await getJson(worksUrl())
     state.total = page.total
+    state.count = page.results.length
     state.hasPrevious = page.hasPrevious
     state.hasNext = page.hasNext
     renderWorks(page.results)
@@ -198,14 +203,13 @@ function releaseResultsHeight(shouldRelease) {
 
 function renderWorks(works) {
   const results = el('results')
-  // Free-campaign results carry freeEpisodeCount and use portrait cover art.
-  results.classList.toggle('free', works.some((work) => work.freeEpisodeCount != null))
   if (!works.length) {
     results.innerHTML = '<p class="muted">No works.</p>'
     return
   }
   results.innerHTML = ''
   for (const work of works) {
+    const ratio = work.thumbnailAspectRatio || 16 / 9
     const freeCount =
       work.freeEpisodeCount != null
         ? `<div class="free-count">▶ ${work.freeEpisodeCount} free</div>`
@@ -213,7 +217,7 @@ function renderWorks(works) {
     const card = document.createElement('div')
     card.className = 'card'
     card.innerHTML = `
-      <img src="${work.thumbnail}" alt="" loading="lazy" />
+      <img src="${work.thumbnail}" alt="" loading="lazy" style="aspect-ratio:${ratio}" />
       <div class="meta">
         <div class="title">${escapeHtml(work.title)}</div>
         ${freeCount}
@@ -228,13 +232,30 @@ function renderWorks(works) {
 }
 
 function renderPager() {
+  const nav = el('pager')
+  const current = Math.floor(state.offset / state.limit) + 1
+
+  // Unknown total (cursor-style provider): show the range without a total and a
+  // Prev · Page N · Next control driven by hasPrevious/hasNext.
+  if (state.total == null) {
+    el('pageInfo').textContent = state.count ? `${state.offset + 1}–${state.offset + state.count}` : '—'
+    if (!state.hasPrevious && !state.hasNext) {
+      nav.innerHTML = ''
+      return
+    }
+    nav.innerHTML = [
+      pageButton('‹', current - 1, { disabled: !state.hasPrevious }),
+      `<span class="page-gap">Page ${current}</span>`,
+      pageButton('›', current + 1, { disabled: !state.hasNext }),
+    ].join('')
+    return
+  }
+
   const from = state.total ? state.offset + 1 : 0
   const to = Math.min(state.offset + state.limit, state.total)
   el('pageInfo').textContent = state.total ? `${from}–${to} of ${state.total}` : '—'
 
   const totalPages = Math.ceil(state.total / state.limit)
-  const current = Math.floor(state.offset / state.limit) + 1
-  const nav = el('pager')
   if (totalPages <= 1) {
     nav.innerHTML = ''
     return
@@ -337,9 +358,10 @@ function writeUrl(replace = false) {
     limit: String(state.limit),
   })
   if (state.feed) params.set('feed', state.feed)
-  if (state.genreSlug) params.set('genre', state.genreSlug)
-  if (state.tagSlug) params.set('tag', state.tagSlug)
-  if (!state.feed && state.sortBy) params.set('sort', state.sortBy)
+  if (state.filter) {
+    params.set(state.filter.param === 'tagId' ? 'tag' : 'genre', state.filter.slug)
+  }
+  if (state.sortBy && applicableSorts().length) params.set('sort', state.sortBy)
 
   const url = `?${params}`
   if (replace) history.replaceState(null, '', url)
@@ -357,8 +379,8 @@ function readUrl() {
     if (chip) selectChip(chip)
   }
 
-  const genreChip = findTypedChip('genre', params.get('genre'))
-  const tagChip = findTypedChip('tag', params.get('tag'))
+  const genreChip = findItemChip('genreId', params.get('genre'))
+  const tagChip = findItemChip('tagId', params.get('tag'))
   if (genreChip) selectChip(genreChip)
   if (tagChip) selectChip(tagChip)
 
@@ -379,26 +401,23 @@ function readUrl() {
 function resetSelection() {
   document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
   state.feed = null
-  state.genreId = null
-  state.genreSlug = null
-  state.tagId = null
-  state.tagSlug = null
+  state.filter = null
 }
 
 function validOption(selectId, value) {
   return [...el(selectId).options].some((option) => option.value === String(value))
 }
 
-function findTypedChip(type, slug) {
+function findItemChip(param, slug) {
   if (!slug) return null
-  return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-slug="${CSS.escape(slug)}"]`)
+  return document.querySelector(`.chip[data-param="${CSS.escape(param)}"][data-slug="${CSS.escape(slug)}"]`)
 }
 
 // Default selection for a provider: its New feed when available, otherwise the
-// first chip (e.g. the "All" tag on ComicWalker Free).
+// first chip (e.g. the "All" category on ComicWalker Free).
 function selectDefaultChip() {
   const chip = state.providerInfo.capabilities.new
-    ? document.querySelector('.chip[data-feed="new"]')
+    ? document.querySelector('.chip[data-feed]')
     : el('picker').querySelector('.chip')
   if (chip) selectChip(chip)
 }

@@ -65,6 +65,7 @@ function toWork(item: CwItem): Work {
     title: item.title,
     url: `${comicWalker.base}/detail/${item.code}`,
     thumbnail: item.thumbnail,
+    thumbnailAspectRatio: 16 / 9, // ComicWalker series covers are landscape banners
     language: item.language,
     serializationStatus: item.serializationStatus,
   }

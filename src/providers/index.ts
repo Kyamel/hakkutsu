@@ -1,10 +1,11 @@
 import { comicWalkerProvider } from './comicwalker/index.js'
 import { comicWalkerFreeProvider } from './comicwalker-free/index.js'
+import { pixivComicProvider } from './pixiv-comic/index.js'
 import type { MangaProvider, ProviderSummary } from './types.js'
 
 // Registry: the single shared touch-point. To add a provider, create its folder
 // and append it here — no other file outside the provider folder changes.
-const providers: MangaProvider[] = [comicWalkerProvider, comicWalkerFreeProvider]
+const providers: MangaProvider[] = [comicWalkerProvider, comicWalkerFreeProvider, pixivComicProvider]
 const providersById = new Map<string, MangaProvider>(providers.map((provider) => [provider.summary.id, provider]))
 
 export const defaultProvider = providers[0]
@@ -18,12 +19,18 @@ export function getProvider(id: string | undefined): MangaProvider | undefined {
   return providersById.get(id)
 }
 
-export function findTaxonomyItem(provider: MangaProvider, slug: string | undefined, type?: 'genre' | 'tag') {
+// Resolve a slug to its taxonomy item, optionally restricted to one dimension.
+export function findTaxonomyItem(provider: MangaProvider, slug: string | undefined, key?: 'genres' | 'tags') {
   if (!slug) return undefined
-  const items = type
-    ? provider.taxonomy[type === 'genre' ? 'genres' : 'tags']
-    : [...provider.taxonomy.genres, ...provider.taxonomy.tags]
-  return items.find((item) => item.slug.toLowerCase() === slug.toLowerCase())
+  const groups = key
+    ? provider.taxonomy.groups.filter((group) => group.key === key)
+    : provider.taxonomy.groups
+  const target = slug.toLowerCase()
+  for (const group of groups) {
+    const match = group.items.find((item) => item.slug.toLowerCase() === target)
+    if (match) return match
+  }
+  return undefined
 }
 
 export function providerCacheTtl(pathname: string, providerId: string | undefined): number | null {

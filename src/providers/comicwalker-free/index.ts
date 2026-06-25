@@ -1,15 +1,16 @@
 import type { MangaProvider, SortOption } from '../types.js'
+import { browseGroup } from '../taxonomy.js'
 import { comicWalkerFree } from './config.js'
 import { listFree } from './queries.js'
-import { comicWalkerFreeTaxonomy } from './taxonomy.js'
+import { comicWalkerFreeCategories } from './taxonomy.js'
 
-// Real category ids (the "all" sentinel means "no filter").
+// The "all" sentinel means "no category filter".
 const ALL_TAG = 'all'
 const categoryIds = new Set(
-  comicWalkerFreeTaxonomy.filter((tag) => tag.id !== ALL_TAG).map((tag) => tag.id),
+  comicWalkerFreeCategories.filter((item) => item.id !== ALL_TAG).map((item) => item.id),
 )
 
-const sorts: SortOption[] = [{ value: 'new', label: 'Recently updated', appliesTo: ['tag'] }]
+const sorts: SortOption[] = [{ value: 'new', label: 'Recently updated', appliesTo: ['tags'] }]
 
 export const comicWalkerFreeProvider: MangaProvider = {
   summary: {
@@ -19,7 +20,6 @@ export const comicWalkerFreeProvider: MangaProvider = {
     capabilities: {
       genres: false,
       tags: true,
-      sorts,
       new: false,
       requiresFilter: false,
     },
@@ -30,9 +30,7 @@ export const comicWalkerFreeProvider: MangaProvider = {
   },
   defaultSort: 'new',
   taxonomy: {
-    genres: [],
-    tags: comicWalkerFreeTaxonomy,
-    sorts,
+    groups: [browseGroup('tags', 'Categories', comicWalkerFreeCategories, sorts)],
   },
   search: (params) => {
     const filterType = params.tagId && categoryIds.has(params.tagId) ? params.tagId : undefined
