@@ -54,7 +54,7 @@ function cacheRequest(request: Request): Request {
 
 function withCacheHeaders(response: Response, status: 'HIT' | 'MISS' | 'BYPASS', ttl: number): Response {
   const headers = new Headers(response.headers)
-  headers.set('Cache-Control', `public, max-age=${ttl}`)
+  headers.set('Cache-Control', status === 'BYPASS' ? 'no-store' : `public, max-age=${ttl}`)
   headers.set('X-Cache', status)
   headers.set('X-Cache-TTL', String(ttl))
   return new Response(response.body, {

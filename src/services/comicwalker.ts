@@ -22,8 +22,8 @@ interface Pagination {
 }
 
 export interface SearchParams extends Pagination {
-  id: string
-  type: 'genre' | 'tag'
+  genreId?: string
+  tagId?: string
   sortBy: string
 }
 
@@ -49,14 +49,15 @@ interface FreeItem {
 }
 
 export async function searchByTag(params: SearchParams): Promise<WorksPage> {
-  // The endpoint takes genreId for genres and tagId for tags; mixing them up
-  // silently returns zero results.
+  // The endpoint accepts at most one genreId and one tagId together. Repeating
+  // tagId only makes ComicWalker use the first one.
   const query = new URLSearchParams({
-    [params.type === 'genre' ? 'genreId' : 'tagId']: params.id,
     limit: String(params.limit),
     offset: String(params.offset),
     sortBy: params.sortBy,
   })
+  if (params.genreId) query.set('genreId', params.genreId)
+  if (params.tagId) query.set('tagId', params.tagId)
   return fetchPage(`${comicWalker.base}/api/search/genreOrTag?${query}`, params)
 }
 

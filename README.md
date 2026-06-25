@@ -95,11 +95,10 @@ The OpenAPI document is generated from the route definitions and Zod schemas in
 `src/api/routes.ts` and `src/api/schemas.ts`.
 
 - `GET /api/tags` — curated comic-walker genres/tags, each with a `slug`.
-- `GET /api/works?tagId=&type=&limit=&offset=&sortBy=` — paginated works for a
-  tag. Identify the tag either by `tagId` (+`type`: `genre` or `tag`, since
-  comic-walker keys them differently) or, more simply, by `tag=<slug>` (the
-  lower-case slug from `/api/tags`, which carries its own type). `sortBy` is
-  `new` (recently updated) or `popularity`.
+- `GET /api/works?genre=&tag=&genreId=&tagId=&limit=&offset=&sortBy=` —
+  paginated works for a genre, a tag, or one of each together. Prefer
+  `genre=<slug>&tag=<slug>` using the lower-case slugs from `/api/tags`.
+  `sortBy` is `new` (recently updated) or `popularity`.
 - `GET /api/new?limit=&offset=` — the recently updated series feed, independent
   of any tag. Same `WorksPage` shape as `/api/works`.
 - `GET /api/works?free=1&tag=&limit=&offset=` — the free-campaign feed. `tag` is

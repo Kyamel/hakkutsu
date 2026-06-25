@@ -134,17 +134,25 @@ api.openapi(worksRoute, async (c) => {
     return c.json(await listFree({ filterType, limit, offset }), 200)
   }
 
-  // Identify the tag by its id (with type) or, more conveniently, by slug.
-  const slug = query.tag
-  const bySlug = slug ? tagBySlug(slug) : undefined
-  const id = query.tagId ?? bySlug?.id
-  if (!id) return c.json({ error: 'tagId or tag (slug) is required' }, 400)
-  const type = bySlug?.type ?? (query.type === 'genre' ? 'genre' : 'tag')
+  const genreBySlug = query.genre ? tagBySlug(query.genre) : undefined
+  const tagByQuerySlug = query.tag ? tagBySlug(query.tag) : undefined
+  // Backward compatibility: old URLs used `tag=<slug>` for both genres and
+  // tags. New URLs use `genre=<slug>&tag=<slug>` when both are selected.
+  const genreId =
+    query.genreId ??
+    (genreBySlug?.type === 'genre' ? genreBySlug.id : undefined) ??
+    (!query.genre && tagByQuerySlug?.type === 'genre' ? tagByQuerySlug.id : undefined) ??
+    (query.type === 'genre' ? query.tagId : undefined)
+  const tagId =
+    (query.type === 'genre' ? undefined : query.tagId) ??
+    (tagByQuerySlug?.type === 'tag' ? tagByQuerySlug.id : undefined)
+
+  if (!genreId && !tagId) return c.json({ error: 'genreId, genre, tagId, or tag is required' }, 400)
 
   const requested = query.sortBy ?? 'new'
   const sortBy = (comicWalker.sorts as readonly string[]).includes(requested) ? requested : 'new'
 
-  return c.json(await searchByTag({ id, type, limit, offset, sortBy }), 200)
+  return c.json(await searchByTag({ genreId, tagId, limit, offset, sortBy }), 200)
 })
 
 api.openapi(newRoute, async (c) => {

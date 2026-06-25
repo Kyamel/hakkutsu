@@ -3,8 +3,9 @@ const el = (id) => document.getElementById(id)
 const state = {
   library: 'all', // 'all' (genres/tags/new) or 'free' (free-campaign feed)
   source: 'tag', // within 'all': 'tag' (genre/tag browse) or 'new' (recent releases)
+  genreId: null,
+  genreSlug: null,
   tagId: null,
-  tagType: 'tag',
   tagSlug: null,
   freeType: null, // within 'free': a category type, or null for all free titles
   sortBy: 'new',
@@ -55,23 +56,51 @@ async function loadFreeCategories() {
       .join('')
 }
 
-// Selection is exclusive across every grid. A chip carries one of: data-free
-// (free category, "" = all free), data-source="new", or genre/tag data-*.
+// Free and New are exclusive. Genre/tag browse allows one genre and one tag;
+// clicking a selected browse chip deselects it.
 function selectChip(chip) {
-  document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
-  chip.classList.add('selected')
   if ('free' in chip.dataset) {
+    document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
+    chip.classList.add('selected')
     state.library = 'free'
     state.freeType = chip.dataset.free || null
   } else {
     state.library = 'all'
     if (chip.dataset.source === 'new') {
+      document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
+      chip.classList.add('selected')
       state.source = 'new'
+      state.genreId = null
+      state.genreSlug = null
+      state.tagId = null
+      state.tagSlug = null
     } else {
+      document.querySelector('.chip[data-source="new"]')?.classList.remove('selected')
       state.source = 'tag'
-      state.tagId = chip.dataset.id
-      state.tagType = chip.dataset.type
-      state.tagSlug = chip.dataset.slug
+      const type = chip.dataset.type
+      const wasSelected = chip.classList.contains('selected')
+      document.querySelectorAll(`.chip[data-type="${CSS.escape(type)}"].selected`).forEach((c) => {
+        c.classList.remove('selected')
+      })
+
+      if (wasSelected) {
+        if (type === 'genre') {
+          state.genreId = null
+          state.genreSlug = null
+        } else {
+          state.tagId = null
+          state.tagSlug = null
+        }
+      } else {
+        chip.classList.add('selected')
+        if (type === 'genre') {
+          state.genreId = chip.dataset.id
+          state.genreSlug = chip.dataset.slug
+        } else {
+          state.tagId = chip.dataset.id
+          state.tagSlug = chip.dataset.slug
+        }
+      }
     }
   }
   el('library').value = state.library
@@ -95,13 +124,21 @@ function worksUrl() {
   if (state.source === 'new') {
     return `/api/new?${new URLSearchParams(page)}`
   }
-  const query = new URLSearchParams({ ...page, tagId: state.tagId, type: state.tagType, sortBy: state.sortBy })
+  const query = new URLSearchParams({ ...page, sortBy: state.sortBy })
+  if (state.genreId) query.set('genreId', state.genreId)
+  if (state.tagId) query.set('tagId', state.tagId)
   return `/api/works?${query}`
 }
 
 async function loadWorks() {
-  if (state.library === 'all' && state.source === 'tag' && !state.tagId) return
   const results = el('results')
+  if (state.library === 'all' && state.source === 'tag' && !state.genreId && !state.tagId) {
+    state.total = 0
+    results.classList.remove('free')
+    results.innerHTML = '<p class="muted">Select a genre, a tag, or both.</p>'
+    renderPager()
+    return
+  }
   results.innerHTML = '<p class="muted">Loading…</p>'
   try {
     const page = await getJson(worksUrl())
@@ -266,7 +303,8 @@ function writeUrl(replace = false) {
   } else if (state.source === 'new') {
     params.set('tag', 'new')
   } else {
-    params.set('tag', state.tagSlug)
+    if (state.genreSlug) params.set('genre', state.genreSlug)
+    if (state.tagSlug) params.set('tag', state.tagSlug)
     params.set('sort', state.sortBy)
   }
   const url = `?${params}`
@@ -276,11 +314,22 @@ function writeUrl(replace = false) {
 
 function readUrl() {
   const params = new URLSearchParams(location.search)
-  const chip = params.get('free')
-    ? findFreeChip(params.get('tag'))
-    : findChip(params.get('tagId'), params.get('tag'))
-  if (!chip) return false
-  selectChip(chip)
+  resetSelection()
+  if (params.get('free')) {
+    selectChip(findFreeChip(params.get('tag')))
+  } else if (params.get('tag') === 'new') {
+    const chip = document.querySelector('.chip[data-source="new"]')
+    if (!chip) return false
+    selectChip(chip)
+  } else {
+    const genreChip = findTypedChip('genre', params.get('genreId'), params.get('genre'))
+    const legacyChip = !genreChip ? findChip(params.get('tagId'), params.get('tag')) : null
+    const tagChip = findTypedChip('tag', params.get('tagId'), params.get('tag'))
+    if (!genreChip && !legacyChip && !tagChip) return false
+    if (genreChip) selectChip(genreChip)
+    if (legacyChip) selectChip(legacyChip)
+    if (tagChip && tagChip !== legacyChip) selectChip(tagChip)
+  }
 
   const limit = Number(params.get('limit'))
   if (validOption('limit', limit)) {
@@ -297,6 +346,17 @@ function readUrl() {
   return true
 }
 
+function resetSelection() {
+  document.querySelectorAll('.chip.selected').forEach((c) => c.classList.remove('selected'))
+  state.library = 'all'
+  state.source = 'tag'
+  state.genreId = null
+  state.genreSlug = null
+  state.tagId = null
+  state.tagSlug = null
+  state.freeType = null
+}
+
 // Accept a URL value only if it matches one of the control's own options.
 function validOption(selectId, value) {
   return [...el(selectId).options].some((o) => o.value === String(value))
@@ -307,6 +367,12 @@ function findChip(tagId, tag) {
   if (tagId) return document.querySelector(`.chip[data-id="${CSS.escape(tagId)}"]`)
   if (tag === 'new') return document.querySelector('.chip[data-source="new"]')
   if (tag) return document.querySelector(`.chip[data-slug="${CSS.escape(tag)}"]`)
+  return null
+}
+
+function findTypedChip(type, id, slug) {
+  if (id) return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-id="${CSS.escape(id)}"]`)
+  if (slug) return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-slug="${CSS.escape(slug)}"]`)
   return null
 }
 

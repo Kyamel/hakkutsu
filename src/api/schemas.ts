@@ -158,26 +158,40 @@ const offsetQuery = z.coerce.number().int().min(0).optional().openapi({
 export const WorksQuerySchema = z.object({
   limit: limitQuery,
   offset: offsetQuery,
+  genre: z.string().optional().openapi({
+    param: {
+      name: 'genre',
+      in: 'query',
+    },
+    example: 'fantasy',
+  }),
+  genreId: z.string().optional().openapi({
+    param: {
+      name: 'genreId',
+      in: 'query',
+    },
+    example: '018a262f-986a-7cca-8c8e-4c8d4b229a94',
+  }),
   tag: z.string().optional().openapi({
     param: {
       name: 'tag',
       in: 'query',
     },
-    example: 'fantasy',
+    example: 'isekai',
   }),
   tagId: z.string().optional().openapi({
     param: {
       name: 'tagId',
       in: 'query',
     },
-    example: '018a262f-986a-7cca-8c8e-4c8d4b229a94',
+    example: '018b8a02-f3dc-7095-a085-45594e3008b7',
   }),
   type: z.enum(['genre', 'tag']).optional().openapi({
     param: {
       name: 'type',
       in: 'query',
     },
-    example: 'genre',
+    example: 'tag',
   }),
   sortBy: z.enum(['new', 'popularity']).optional().openapi({
     param: {
