@@ -1,0 +1,19 @@
+{
+  "name": "hakkutsu",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:remote": "wrangler dev --remote",
+    "build": "tsc --noEmit",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.12.27"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260625.1",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.104.0"
+  }
+}

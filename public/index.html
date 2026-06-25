@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>hakkutsu — manga discovery</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <a class="home" href="/"><h1>発掘 hakkutsu</h1></a>
+        <p>Browse comic-walker by tag, then check MangaDex for translations.</p>
+      </div>
+      <a class="github" href="https://github.com/kyamel/hakkutsu" target="_blank" rel="noopener">
+        kyamel/hakkutsu ↗
+      </a>
+    </header>
+
+    <section class="picker" id="picker-all">
+      <fieldset>
+        <legend>Browse</legend>
+        <div class="chips">
+          <button class="chip" data-source="new">
+            <span class="chip-label">New releases</span>
+            <span class="chip-name">最新更新</span>
+          </button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Genres</legend>
+        <div id="genres" class="chips"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Tags</legend>
+        <div id="tags" class="chips"></div>
+      </fieldset>
+    </section>
+
+    <section class="picker" id="picker-free" hidden>
+      <fieldset>
+        <legend>Free categories</legend>
+        <div id="free-cats" class="chips"></div>
+      </fieldset>
+    </section>
+
+    <section class="controls">
+      <label>
+        Library
+        <select id="library">
+          <option value="all">Default</option>
+          <option value="free">Free</option>
+        </select>
+      </label>
+      <label>
+        Sort
+        <select id="sort">
+          <option value="new">Recently updated</option>
+          <option value="popularity">Popularity</option>
+        </select>
+      </label>
+      <label>
+        Per page
+        <select id="limit">
+          <option>10</option>
+          <option>20</option>
+          <option>30</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="pager-wrap">
+      <span id="pageInfo">—</span>
+      <nav id="pager"></nav>
+    </section>
+
+    <main id="results" class="grid"></main>
+
+    <aside id="match" class="match">
+      <p class="hint">Select a work above to check MangaDex.</p>
+    </aside>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
