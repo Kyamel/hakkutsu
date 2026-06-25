@@ -394,15 +394,21 @@ function findTypedChip(type, slug) {
   return document.querySelector(`.chip[data-type="${CSS.escape(type)}"][data-slug="${CSS.escape(slug)}"]`)
 }
 
+// Default selection for a provider: its New feed when available, otherwise the
+// first chip (e.g. the "All" tag on ComicWalker Free).
+function selectDefaultChip() {
+  const chip = state.providerInfo.capabilities.new
+    ? document.querySelector('.chip[data-feed="new"]')
+    : el('picker').querySelector('.chip')
+  if (chip) selectChip(chip)
+}
+
 async function changeProvider(providerId, replaceUrl = false) {
   resetSelection()
   state.provider = providerId
   state.offset = 0
   await loadTaxonomy(providerId)
-  if (state.providerInfo.capabilities.new) {
-    const newChip = document.querySelector('.chip[data-feed="new"]')
-    if (newChip) selectChip(newChip)
-  }
+  selectDefaultChip()
   writeUrl(replaceUrl)
   await loadWorks(true)
 }
@@ -456,9 +462,8 @@ async function init() {
   const provider = params.get('provider') || state.providers[0]?.id || 'comicwalker'
   await loadTaxonomy(provider)
   readUrl()
-  if (!location.search && state.providerInfo.capabilities.new) {
-    const newChip = document.querySelector('.chip[data-feed="new"]')
-    if (newChip) selectChip(newChip)
+  if (!location.search) {
+    selectDefaultChip()
     writeUrl(true)
   }
   loadWorks()

@@ -135,7 +135,6 @@ api.openapi(worksRoute, async (c) => {
     await provider.search({
       genreId,
       tagId,
-      tag: tagBySlug?.id ?? query.tag,
       feed: query.feed,
       limit,
       offset,

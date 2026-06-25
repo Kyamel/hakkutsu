@@ -3,7 +3,11 @@ import { comicWalkerFree } from './config.js'
 import { listFree } from './queries.js'
 import { comicWalkerFreeTaxonomy } from './taxonomy.js'
 
-const tagIds = new Set(comicWalkerFreeTaxonomy.map((tag) => tag.id))
+// Real category ids (the "all" sentinel means "no filter").
+const ALL_TAG = 'all'
+const categoryIds = new Set(
+  comicWalkerFreeTaxonomy.filter((tag) => tag.id !== ALL_TAG).map((tag) => tag.id),
+)
 
 const sorts: SortOption[] = [{ value: 'new', label: 'Recently updated', appliesTo: ['tag'] }]
 
@@ -31,7 +35,7 @@ export const comicWalkerFreeProvider: MangaProvider = {
     sorts,
   },
   search: (params) => {
-    const filterType = params.tag && tagIds.has(params.tag) ? params.tag : undefined
+    const filterType = params.tagId && categoryIds.has(params.tagId) ? params.tagId : undefined
     return listFree({ filterType, limit: params.limit, offset: params.offset })
   },
 }

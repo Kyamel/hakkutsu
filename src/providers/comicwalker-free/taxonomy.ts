@@ -1,8 +1,10 @@
 import { defineTaxonomy } from '../taxonomy.js'
 
 // The free-campaign feed has its own (smaller) category set, keyed by string
-// `type` rather than the regular ComicWalker genre/tag UUIDs.
+// `type` rather than the regular ComicWalker genre/tag UUIDs. The leading "all"
+// tag is a sentinel that lists every free title (no category filter).
 export const comicWalkerFreeTaxonomy = defineTaxonomy([
+  { id: 'all', name: '総合', label: 'All', type: 'tag' },
   { id: 'fantasy', name: 'ファンタジー', label: 'Fantasy', type: 'tag' },
   { id: 'romance', name: '恋愛', label: 'Romance', type: 'tag' },
   { id: 'romcom', name: 'ラブコメ', label: 'Romcom', type: 'tag' },

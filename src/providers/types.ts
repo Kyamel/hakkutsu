@@ -48,7 +48,6 @@ export interface Pagination {
 export interface SearchWorksParams extends Pagination {
   genreId?: string
   tagId?: string
-  tag?: string
   feed?: string
   sortBy: string
 }
