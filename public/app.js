@@ -130,16 +130,23 @@ function worksUrl() {
   return `/api/works?${query}`
 }
 
-async function loadWorks() {
+async function loadWorks(preserveScroll = false) {
+  const scrollY = window.scrollY
   const results = el('results')
+  const previousHeight = results.offsetHeight
+  if (preserveScroll && previousHeight) results.style.minHeight = `${previousHeight}px`
+
   if (state.library === 'all' && state.source === 'tag' && !state.genreId && !state.tagId) {
     state.total = 0
     results.classList.remove('free')
     results.innerHTML = '<p class="muted">Select a genre, a tag, or both.</p>'
     renderPager()
+    restoreScroll(preserveScroll, scrollY)
+    releaseResultsHeight(preserveScroll)
     return
   }
   results.innerHTML = '<p class="muted">Loading…</p>'
+  restoreScroll(preserveScroll, scrollY)
   try {
     const page = await getJson(worksUrl())
     state.total = page.total
@@ -147,9 +154,24 @@ async function loadWorks() {
     state.hasNext = page.hasNext
     renderWorks(page.results)
     renderPager()
+    restoreScroll(preserveScroll, scrollY)
   } catch (err) {
     results.innerHTML = `<p class="muted">Failed: ${err.message}</p>`
+    restoreScroll(preserveScroll, scrollY)
+  } finally {
+    releaseResultsHeight(preserveScroll)
   }
+}
+
+function restoreScroll(shouldRestore, scrollY) {
+  if (shouldRestore) window.scrollTo({ top: scrollY, left: 0, behavior: 'auto' })
+}
+
+function releaseResultsHeight(shouldRelease) {
+  if (!shouldRelease) return
+  requestAnimationFrame(() => {
+    el('results').style.minHeight = ''
+  })
 }
 
 function renderWorks(works) {
@@ -388,7 +410,7 @@ function findFreeChip(type) {
 function search() {
   state.offset = 0
   writeUrl()
-  loadWorks()
+  loadWorks(true)
 }
 
 for (const picker of document.querySelectorAll('.picker')) {
@@ -421,7 +443,7 @@ el('pager').addEventListener('click', (e) => {
   if (!btn || btn.disabled || btn.classList.contains('page-current')) return
   state.offset = (Number(btn.dataset.page) - 1) * state.limit
   writeUrl()
-  loadWorks()
+  loadWorks(true)
 })
 
 window.addEventListener('popstate', () => {
