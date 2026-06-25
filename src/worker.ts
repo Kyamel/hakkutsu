@@ -1,7 +1,7 @@
 import { app } from './app.js'
 import { providerCacheTtl } from './providers/index.js'
 
-const CACHE_VERSION = 'taxonomy-v1'
+const CACHE_VERSION = 'taxonomy-v2'
 
 interface Env {
   ASSETS: {
