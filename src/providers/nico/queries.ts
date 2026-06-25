@@ -1,41 +1,65 @@
 import { fetchText } from '../../lib/http.js'
 import type { Work, WorksPage } from '../../types.js'
+import { toPage } from '../pagination.js'
 import type { Pagination } from '../types.js'
 import { nico } from './config.js'
 
-export interface RankingParams extends Pagination {
-  rankType: string // 'point' (popularity) | 'view' (views)
-  span: string // hourly | daily | weekly | monthly | total
-  category: string // ranking category slug, e.g. 'shonen' or 'all'
+export interface CatalogParams extends Pagination {
+  category: string // catalog category slug, e.g. 'shonen'; 'all' = whole library
+  sort: string // manga_updated | manga_favorite | manga_created | comment_created | view
 }
 
-// Each ranked work renders one anchor that bundles its id, cover and title:
-//   <a href="/comic/{id}?track=rank" class="mg_thumb_img">
-//     <img src="{thumb}" alt="{title}" ... />
-// The page returns the full ranking (no real pagination), so we extract every
-// item and slice the requested limit/offset window out of it client-side.
-const ITEM_RE =
-  /<a href="\/comic\/(\d+)[^"]*" class="mg_thumb_img">\s*<img src="([^"]+)" alt="([^"]*)"/g
+// The catalog lists 20 works per page.
+const PAGE_SIZE = 20
 
-// Browse a ranking page (genre + sort), mapped to the limit/offset contract.
-export async function listRanking(params: RankingParams): Promise<WorksPage> {
-  const url = `${nico.base}/ranking/${params.rankType}/${params.span}/${params.category}`
-  const html = await fetchText(url, { headers: nico.headers })
+// Each work is one <li class="mg_item item"> … </li>. Within it:
+//   - the title is the sole text-only anchor to /comic/{id}?track=list (the other
+//     anchors to the same id wrap an <img>/<div>, so [^<]+ excludes them);
+//   - the work cover is the <img> inside the `center_img_inner` anchor (the
+//     `mg_icon` art). The other thumb on the card (`thumb_image`/`mg_thumb`) is
+//     the latest episode's image, not the work cover.
+// The page also prints the catalog size as <span class="number">{n}件</span>.
+const ITEM_SPLIT = /<li class="mg_item item"/
+const TITLE_RE = /<a [^>]*?href="\/comic\/(\d+)\?track=list"[^>]*>([^<]+)<\/a>/
+const COVER_RE = /<a class="center_img_inner[^>]*>\s*<img src="([^"]+)"/
+const TOTAL_RE = /<span class="number">(\d+)件/
 
-  const all: Work[] = []
-  for (const match of html.matchAll(ITEM_RE)) {
-    all.push(toWork(match[1], match[2], match[3]))
+// Browse the full catalog (category + sort), bridged to the limit/offset
+// contract. The page is fixed at 20 items, so we pull the pages spanning the
+// requested window, slice it out, and report the real total the page exposes.
+export async function listCatalog(params: CatalogParams): Promise<WorksPage> {
+  const { limit, offset, category, sort } = params
+  const startPage = Math.floor(offset / PAGE_SIZE) + 1
+  const endPage = Math.floor((offset + Math.max(limit, 1) - 1) / PAGE_SIZE) + 1
+  const localStart = offset % PAGE_SIZE
+
+  const collected: Work[] = []
+  let total = 0
+  for (let page = startPage; page <= endPage; page += 1) {
+    const { works, totalCount } = await fetchCatalogPage(category, sort, page)
+    total = totalCount
+    collected.push(...works)
+    if (works.length < PAGE_SIZE) break // reached the last page
   }
 
-  const results = all.slice(params.offset, params.offset + params.limit)
-  return {
-    total: all.length,
-    limit: params.limit,
-    offset: params.offset,
-    hasPrevious: params.offset > 0,
-    hasNext: params.offset + params.limit < all.length,
-    results,
+  const results = collected.slice(localStart, localStart + limit)
+  return toPage(total, results, { limit, offset })
+}
+
+async function fetchCatalogPage(category: string, sort: string, page: number) {
+  const query = new URLSearchParams({ sort, page: String(page) })
+  if (category !== 'all') query.set('category', category)
+  const html = await fetchText(`${nico.base}/manga/list?${query}`, { headers: nico.headers })
+
+  const totalCount = Number(html.match(TOTAL_RE)?.[1] ?? 0)
+  const works: Work[] = []
+  for (const chunk of html.split(ITEM_SPLIT).slice(1)) {
+    const title = chunk.match(TITLE_RE)
+    if (!title) continue
+    const cover = chunk.match(COVER_RE)?.[1] ?? ''
+    works.push(toWork(title[1], cover, title[2]))
   }
+  return { works, totalCount }
 }
 
 function toWork(id: string, thumbnail: string, rawTitle: string): Work {
@@ -47,7 +71,7 @@ function toWork(id: string, thumbnail: string, rawTitle: string): Work {
     title: decodeEntities(rawTitle),
     url: `${nico.base}/comic/${id}`,
     thumbnail,
-    thumbnailAspectRatio: 16 / 9, // ranking covers are 160x90 landscape
+    thumbnailAspectRatio: 1, // mg_icon covers are 160x160 square
     language: 'ja',
     serializationStatus: 'unknown',
   }

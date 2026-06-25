@@ -4,7 +4,8 @@ const BROWSER_UA =
 // ニコニコ漫画. The manga service moved off `seiga.nicovideo.jp` (now legacy and
 // region-locked outside Japan) to `manga.nicovideo.jp`, which answers globally
 // without login. The public content-search and `ajax/manga/list` APIs are gone
-// or login-walled, so this provider scrapes the genre ranking pages instead.
+// or login-walled, so this provider scrapes the server-rendered catalog
+// (`/manga/list`), which paginates the full library and exposes a total count.
 export const nico = {
   base: 'https://manga.nicovideo.jp',
   site: 'https://manga.nicovideo.jp',
