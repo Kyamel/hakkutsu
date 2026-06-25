@@ -42,8 +42,45 @@ export const FreeCategorySchema = z
   })
   .openapi('FreeCategory')
 
+export const ProviderSchema = z
+  .object({
+    id: z.string().openapi({
+      example: 'comicwalker',
+    }),
+    name: z.string().openapi({
+      example: 'ComicWalker',
+    }),
+    site: z.string().url().openapi({
+      example: 'https://comic-walker.com',
+    }),
+    capabilities: z.object({
+      genres: z.boolean().openapi({
+        example: true,
+      }),
+      tags: z.boolean().openapi({
+        example: true,
+      }),
+      free: z.boolean().openapi({
+        example: true,
+      }),
+      new: z.boolean().openapi({
+        example: true,
+      }),
+      popularitySort: z.boolean().openapi({
+        example: true,
+      }),
+    }),
+  })
+  .openapi('Provider')
+
 export const WorkSchema = z
   .object({
+    provider: z.string().openapi({
+      example: 'comicwalker',
+    }),
+    providerName: z.string().openapi({
+      example: 'ComicWalker',
+    }),
     id: z.string().openapi({
       example: '018a8d8a-1dc5-7b3d-9b69-000000000000',
     }),
@@ -64,6 +101,12 @@ export const WorkSchema = z
     }),
     serializationStatus: z.string().openapi({
       example: 'serialization',
+    }),
+    publisher: z.string().optional().openapi({
+      example: 'Kadokawa',
+    }),
+    popularityJp: z.number().min(0).max(10).optional().openapi({
+      example: 8.7,
     }),
     freeEpisodeCount: z.number().int().optional().openapi({
       example: 3,
@@ -155,7 +198,24 @@ const offsetQuery = z.coerce.number().int().min(0).optional().openapi({
   example: 0,
 })
 
+export const ProviderQuerySchema = z.object({
+  provider: z.string().optional().openapi({
+    param: {
+      name: 'provider',
+      in: 'query',
+    },
+    example: 'comicwalker',
+  }),
+})
+
 export const WorksQuerySchema = z.object({
+  provider: z.string().optional().openapi({
+    param: {
+      name: 'provider',
+      in: 'query',
+    },
+    example: 'comicwalker',
+  }),
   limit: limitQuery,
   offset: offsetQuery,
   genre: z.string().optional().openapi({
@@ -210,6 +270,13 @@ export const WorksQuerySchema = z.object({
 })
 
 export const NewQuerySchema = z.object({
+  provider: z.string().optional().openapi({
+    param: {
+      name: 'provider',
+      in: 'query',
+    },
+    example: 'comicwalker',
+  }),
   limit: limitQuery,
   offset: offsetQuery,
 })

@@ -90,11 +90,12 @@ Interactive API docs are available at:
 
 - `GET /api/docs` — Swagger UI.
 - `GET /api/openapi.json` — generated OpenAPI document.
+- `GET /api/providers` — available source providers and their capabilities.
 
 The OpenAPI document is generated from the route definitions and Zod schemas in
 `src/api/routes.ts` and `src/api/schemas.ts`.
 
-- `GET /api/tags` — curated comic-walker genres/tags, each with a `slug`.
+- `GET /api/tags?provider=` — curated provider genres/tags, each with a `slug`.
 - `GET /api/works?genre=&tag=&genreId=&tagId=&limit=&offset=&sortBy=` —
   paginated works for a genre, a tag, or one of each together. Prefer
   `genre=<slug>&tag=<slug>` using the lower-case slugs from `/api/tags`.

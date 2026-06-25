@@ -1,12 +1,16 @@
-// A work as surfaced by comic-walker search.
+// A work as surfaced by a Japanese manga provider.
 export interface Work {
+  provider: string
+  providerName: string
   id: string
   code: string
   title: string // Japanese title
-  url: string // comic-walker detail page
+  url: string // provider detail page
   thumbnail: string
   language: string
   serializationStatus: string
+  publisher?: string
+  popularityJp?: number // normalized 0..10 when the provider exposes a usable popularity signal
   freeEpisodeCount?: number // present only for free-campaign results
 }
 

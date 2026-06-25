@@ -3,8 +3,8 @@ import { fetchJson } from '../lib/http.js'
 import type { Work, WorksPage } from '../types.js'
 
 interface CwResponse {
-  total: number
-  result: CwItem[]
+    total: number
+    result: CwItem[]
 }
 
 interface CwItem {
@@ -103,6 +103,8 @@ function toPage(total: number, results: Work[], page: Pagination): WorksPage {
 
 function toWork(item: CwItem): Work {
   return {
+    provider: 'comicwalker',
+    providerName: 'ComicWalker',
     id: item.id,
     code: item.code,
     title: item.title,
@@ -115,6 +117,8 @@ function toWork(item: CwItem): Work {
 
 function toFreeWork(item: FreeItem): Work {
   return {
+    provider: 'comicwalker',
+    providerName: 'ComicWalker',
     id: item.id,
     code: item.code,
     title: item.title,

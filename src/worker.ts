@@ -39,6 +39,7 @@ function cacheTtl(request: Request): number | null {
   if (request.method !== 'GET') return null
 
   const { pathname } = new URL(request.url)
+  if (pathname === '/api/providers') return 86400
   if (pathname === '/api/tags' || pathname === '/api/free/categories') return 86400
   if (pathname === '/api/openapi.json') return 86400
   if (pathname === '/api/works' || pathname === '/api/new') return 600
