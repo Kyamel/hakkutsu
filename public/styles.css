@@ -43,10 +43,19 @@ header p {
   text-decoration: none;
 }
 
-.github {
+.link {
   flex-shrink: 0;
   font-size: 0.9rem;
   white-space: nowrap;
+}
+
+footer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 0 0;
+  border-top: 1px solid var(--line);
 }
 
 .controls {

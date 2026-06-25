@@ -64,7 +64,7 @@ Then test the staging URL printed by Wrangler, for example
 
 Automatic deploys run from `.github/workflows/deploy-worker.yml` on pushes to
 `main`. The workflow runs `npm ci`, `npm run build`, then
-`wrangler deploy --env=""` to target the top-level production Worker explicitly.
+`npm run deploy` to target the top-level production Worker explicitly.
 Add these GitHub repository secrets before enabling the workflow:
 
 - `CLOUDFLARE_ACCOUNT_ID`
@@ -80,6 +80,14 @@ Add these GitHub repository secrets before enabling the workflow:
 The API is the source of truth; the page in `public/` is a thin client.
 
 ## HTTP API
+
+Interactive API docs are available at:
+
+- `GET /api/docs` — Swagger UI.
+- `GET /api/openapi.json` — generated OpenAPI document.
+
+The OpenAPI document is generated from the route definitions and Zod schemas in
+`src/api/routes.ts` and `src/api/schemas.ts`.
 
 - `GET /api/tags` — curated comic-walker genres/tags, each with a `slug`.
 - `GET /api/works?tagId=&type=&limit=&offset=&sortBy=` — paginated works for a
