@@ -89,6 +89,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$TAG_NAME" release-apks/*.apk \
-            --title "Hakkutsu Android ${TAG_NAME}" \
-            --notes "Android Capacitor APK build for ${GITHUB_SHA}."
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" release-apks/*.apk --clobber
+          else
+            gh release create "$TAG_NAME" release-apks/*.apk \
+              --title "Hakkutsu Android ${TAG_NAME}" \
+              --notes "Android Capacitor APK build for ${GITHUB_SHA}."
+          fi
