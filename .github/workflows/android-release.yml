@@ -1,0 +1,94 @@
+name: Android APK Release
+
+on:
+  push:
+    tags:
+      - "android-v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to create. Defaults to android-<run number>."
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_ANDROID_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Resolve release tag
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG_NAME="${{ inputs.tag_name }}"
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+          else
+            TAG_NAME="android-${GITHUB_RUN_NUMBER}"
+          fi
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - run: npm run build:mobile
+
+      - name: Prepare signing keystore
+        if: env.HAS_ANDROID_SIGNING == 'true'
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/hakkutsu-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/hakkutsu-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Build signed release APK
+        if: env.HAS_ANDROID_SIGNING == 'true'
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Collect APKs
+        run: |
+          mkdir -p release-apks
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-apks/hakkutsu-debug.apk
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk release-apks/hakkutsu-release.apk
+          fi
+          ls -lh release-apks
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: hakkutsu-apks
+          path: release-apks/*.apk
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG_NAME" release-apks/*.apk \
+            --title "Hakkutsu Android ${TAG_NAME}" \
+            --notes "Android Capacitor APK build for ${GITHUB_SHA}."

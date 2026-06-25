@@ -1,5 +1,5 @@
-import { app } from './app.js'
 import { providerCacheTtl } from './providers/index.js'
+import { app } from './worker-app.js'
 
 const CACHE_VERSION = 'taxonomy-v3'
 

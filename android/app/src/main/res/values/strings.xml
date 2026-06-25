@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hakkutsu</string>
+    <string name="title_activity_main">Hakkutsu</string>
+    <string name="package_name">dev.hakkutsu.app</string>
+    <string name="custom_url_scheme">dev.hakkutsu.app</string>
+</resources>

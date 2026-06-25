@@ -6,13 +6,19 @@
     "dev:remote": "wrangler dev --remote",
     "dev:node": "tsx watch src/dev/server.ts",
     "build": "tsc --noEmit",
+    "build:mobile:web": "vite build --config vite.mobile.config.ts && cp public/app.js public/styles.css dist-capacitor/",
+    "build:mobile": "npm run build && npm run build:mobile:web && cap sync android",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy": "wrangler deploy --env="
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@hono/swagger-ui": "^0.6.1",
     "@hono/zod-openapi": "^1.4.0",
     "hono": "^4.12.27",
+    "vite": "^8.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

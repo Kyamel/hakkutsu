@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>hakkutsu — manga discovery</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <a class="home" href="/"><h1>発掘 hakkutsu</h1></a>
+        <p>Browse jp vendors, then check MangaDex for translations.</p>
+      </div>
+    </header>
+
+    <section class="picker" id="picker"></section>
+
+    <section class="controls">
+      <label>
+        Library
+        <select id="library"></select>
+      </label>
+      <label>
+        Sort
+        <select id="sort"></select>
+      </label>
+      <label>
+        Per page
+        <select id="limit">
+          <option>10</option>
+          <option>20</option>
+          <option>30</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="pager-wrap">
+      <span id="pageInfo">—</span>
+      <nav id="pager"></nav>
+    </section>
+
+    <main id="results" class="grid"></main>
+
+    <aside id="match" class="match">
+      <p class="hint">Select a work above to check MangaDex.</p>
+    </aside>
+
+    <footer>
+      <a class="link" href="https://github.com/kyamel/hakkutsu" target="_blank" rel="noopener">
+        Github ↗
+      </a>
+    </footer>
+
+    <script type="module" src="../src/mobile/entry.ts"></script>
+  </body>
+</html>

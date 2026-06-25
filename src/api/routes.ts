@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { findTaxonomyItem, findTaxonomyItems, getProvider, listProviders } from '../providers/index.js'
+import type { ProviderRuntime } from '../providers/index.js'
 import type { MangaProvider } from '../providers/types.js'
 import { findMatch } from '../services/matcher.js'
 import {
@@ -13,7 +14,13 @@ import {
   WorksQuerySchema,
 } from './schemas.js'
 
-export const api = new OpenAPIHono()
+export interface ApiOptions {
+  providerRuntime?: ProviderRuntime
+}
+
+export function createApi(options: ApiOptions = {}): OpenAPIHono {
+  const api = new OpenAPIHono()
+  const providerRuntime = options.providerRuntime ?? 'worker'
 
 const json = <T>(schema: T) => ({
   content: {
@@ -104,18 +111,18 @@ const matchRoute = createRoute({
   },
 })
 
-api.openapi(providersRoute, (c) => c.json(listProviders(), 200))
+  api.openapi(providersRoute, (c) => c.json(listProviders(providerRuntime), 200))
 
-api.openapi(taxonomyRoute, (c) => {
-  const provider = providerFromQuery(c.req.valid('query').provider)
-  if (!provider) return c.json({ error: 'unknown provider' }, 400)
-  return c.json({ provider: provider.summary, ...provider.taxonomy }, 200)
-})
+  api.openapi(taxonomyRoute, (c) => {
+    const provider = providerFromQuery(c.req.valid('query').provider, providerRuntime)
+    if (!provider) return c.json({ error: 'unknown provider' }, 400)
+    return c.json({ provider: provider.summary, ...provider.taxonomy }, 200)
+  })
 
-api.openapi(worksRoute, async (c) => {
-  const query = c.req.valid('query')
-  const provider = providerFromQuery(query.provider)
-  if (!provider) return c.json({ error: 'unknown provider' }, 400)
+  api.openapi(worksRoute, async (c) => {
+    const query = c.req.valid('query')
+    const provider = providerFromQuery(query.provider, providerRuntime)
+    if (!provider) return c.json({ error: 'unknown provider' }, 400)
 
   const limit = query.limit ?? 10
   const offset = query.offset ?? 0
@@ -145,30 +152,35 @@ api.openapi(worksRoute, async (c) => {
     return c.json({ error: 'genreId, genre, tagId, tag, type, or feed is required' }, 400)
   }
 
-  return c.json(
-    await provider.search({
-      genreId,
-      genreIds,
-      excludeGenreIds,
-      tagId,
-      typeIds,
-      year: query.year,
-      feed: query.feed,
-      limit,
-      offset,
-      sortBy,
-    }),
-    200,
-  )
-})
+    return c.json(
+      await provider.search({
+        genreId,
+        genreIds,
+        excludeGenreIds,
+        tagId,
+        typeIds,
+        year: query.year,
+        feed: query.feed,
+        limit,
+        offset,
+        sortBy,
+      }),
+      200,
+    )
+  })
 
-api.openapi(matchRoute, async (c) => {
-  const { title } = c.req.valid('query')
-  return c.json(await findMatch(title), 200)
-})
+  api.openapi(matchRoute, async (c) => {
+    const { title } = c.req.valid('query')
+    return c.json(await findMatch(title), 200)
+  })
 
-function providerFromQuery(id: string | undefined) {
-  return getProvider(id)
+  return api
+}
+
+export const api = createApi()
+
+function providerFromQuery(id: string | undefined, runtime: ProviderRuntime) {
+  return getProvider(id, runtime)
 }
 
 // Merge taxonomy ids resolved from a comma-separated slug list with raw ids

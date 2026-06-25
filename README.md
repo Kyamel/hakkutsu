@@ -74,6 +74,66 @@ Add these GitHub repository secrets before enabling the workflow:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
+## Android app
+
+The Android app is a Capacitor build of the same frontend and Hono API core.
+It does not call the deployed Cloudflare Worker for API routes:
+
+- The UI is built from `mobile/index.html` and reuses `public/app.js` and
+  `public/styles.css`.
+- `src/mobile/entry.ts` intercepts local `/api/*` requests and serves them with
+  the in-process Hono app from `src/app.ts`.
+- External provider requests still go directly to ComicWalker, Pixiv Comic,
+  Nico Nico Manga, and MangaDex from the device. `CapacitorHttp` is enabled so
+  Android uses native HTTP for those upstream calls.
+- Worker-only features are not part of the Android runtime: no Workers cache,
+  no `/api/docs`, and no `/api/openapi.json`.
+- The native provider registry can include providers that do not work from
+  Cloudflare egress. Pixiv Comic is native-only right now because its API returns
+  403 from the deployed Worker but works from normal client networks.
+
+Build and sync the Android project:
+
+```
+npm run build:mobile
+```
+
+Build a local debug APK:
+
+```
+cd android
+./gradlew assembleDebug
+```
+
+The debug APK is written to:
+
+```
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+You need a local JDK and Android SDK for Gradle builds. The GitHub workflow uses
+JDK 21 automatically.
+
+### Android release workflow
+
+`.github/workflows/android-release.yml` publishes APKs to a GitHub Release.
+Trigger it by pushing an Android tag:
+
+```
+git tag android-v0.1.0
+git push origin android-v0.1.0
+```
+
+Or run **Android APK Release** manually from GitHub Actions.
+
+The workflow always builds and uploads a debug APK. To also publish a signed
+release APK, add these repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64` — base64-encoded `.jks` keystore.
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
 ## How it works
 
 1. Browse provider works by genre/tag (paginated, sortable by provider options).
@@ -115,12 +175,17 @@ src/
   config.ts          MangaDex config + match threshold
   types.ts           shared domain types
   api/routes.ts      HTTP layer (Hono)
+  app.ts             shared Hono app factory for Worker, Node dev, and Android
+  worker-app.ts      Worker/Node app with OpenAPI + Swagger docs enabled
+  mobile/            Capacitor entrypoint that runs the API locally on Android
   providers/         registry + shared contract/helpers, and one
     <name>/          self-contained folder per provider:
                        config.ts, taxonomy.ts, queries.ts, index.ts
   services/          mangadex, matcher (MangaDex lookup side)
   lib/               http, title normalization/matching, concurrency
 public/              vanilla HTML/CSS/JS client
+mobile/              Capacitor HTML shell
+android/             generated Capacitor Android project
 ```
 
 ## Matching notes

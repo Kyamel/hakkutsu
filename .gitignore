@@ -12,6 +12,7 @@
 # deps
 node_modules/
 dist/
+dist-capacitor/
 
 # env
 .env

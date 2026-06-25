@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
-import { app } from '../app.js'
+import { app } from '../worker-app.js'
 
 // Local dev entrypoint for Node. `wrangler dev` runs the Worker on workerd, which
 // in some sandboxes rejects upstream TLS certs ("certificate is not trusted") and
