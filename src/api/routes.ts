@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { findTaxonomyItem, getProvider, listProviders } from '../providers/index.js'
+import { findTaxonomyItem, findTaxonomyItems, getProvider, listProviders } from '../providers/index.js'
+import type { MangaProvider } from '../providers/types.js'
 import { findMatch } from '../services/matcher.js'
 import {
   ErrorSchema,
@@ -118,23 +119,40 @@ api.openapi(worksRoute, async (c) => {
 
   const limit = query.limit ?? 10
   const offset = query.offset ?? 0
-  const genreBySlug = findTaxonomyItem(provider, query.genre, 'genres')
+
+  // Genres accept comma-separated slugs (query.genre) and/or ids (query.genreId),
+  // for multi-select providers; single-select providers just read the first.
+  const genreIds = collectIds(provider, query.genre, query.genreId, 'genres')
+  const excludeGenreIds = collectIds(provider, query.excludeGenre, query.excludeGenreId, 'genres')
+  const genreId = genreIds[0]
+
   const tagBySlug = findTaxonomyItem(provider, query.tag, 'tags')
-  const genreId = query.genreId ?? genreBySlug?.id
   const tagId = query.tagId ?? tagBySlug?.id
+  const typeIds = collectIds(provider, query.type, undefined, 'types')
+
   const knownSort = provider.taxonomy.groups.some((group) =>
     group.sorts.some((sort) => sort.value === query.sortBy),
   )
   const sortBy = query.sortBy && knownSort ? query.sortBy : provider.defaultSort
 
-  if (!genreId && !tagId && !query.feed && provider.summary.capabilities.requiresFilter) {
-    return c.json({ error: 'genreId, genre, tagId, tag, or feed is required' }, 400)
+  if (
+    !genreId &&
+    !tagId &&
+    typeIds.length === 0 &&
+    !query.feed &&
+    provider.summary.capabilities.requiresFilter
+  ) {
+    return c.json({ error: 'genreId, genre, tagId, tag, type, or feed is required' }, 400)
   }
 
   return c.json(
     await provider.search({
       genreId,
+      genreIds,
+      excludeGenreIds,
       tagId,
+      typeIds,
+      year: query.year,
       feed: query.feed,
       limit,
       offset,
@@ -151,4 +169,19 @@ api.openapi(matchRoute, async (c) => {
 
 function providerFromQuery(id: string | undefined) {
   return getProvider(id)
+}
+
+// Merge taxonomy ids resolved from a comma-separated slug list with raw ids
+// passed directly, de-duplicated and order-preserving.
+function collectIds(
+  provider: MangaProvider,
+  slugCsv: string | undefined,
+  idCsv: string | undefined,
+  key: 'genres' | 'tags' | 'types',
+): string[] {
+  const fromSlugs = findTaxonomyItems(provider, slugCsv, key)
+  const fromIds = idCsv
+    ? idCsv.split(',').map((id) => id.trim()).filter(Boolean)
+    : []
+  return [...new Set([...fromSlugs, ...fromIds])]
 }

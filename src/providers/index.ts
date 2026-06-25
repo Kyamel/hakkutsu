@@ -1,5 +1,6 @@
 import { comicWalkerProvider } from './comicwalker/index.js'
 import { comicWalkerFreeProvider } from './comicwalker-free/index.js'
+import { mangaUpdatesProvider } from './mangaupdates/index.js'
 import { nicoProvider } from './nico/index.js'
 import { pixivComicProvider } from './pixiv-comic/index.js'
 import type { MangaProvider, ProviderSummary } from './types.js'
@@ -11,6 +12,7 @@ const providers: MangaProvider[] = [
   comicWalkerFreeProvider,
   pixivComicProvider,
   nicoProvider,
+  //mangaUpdatesProvider,
 ]
 const providersById = new Map<string, MangaProvider>(providers.map((provider) => [provider.summary.id, provider]))
 
@@ -26,7 +28,11 @@ export function getProvider(id: string | undefined): MangaProvider | undefined {
 }
 
 // Resolve a slug to its taxonomy item, optionally restricted to one dimension.
-export function findTaxonomyItem(provider: MangaProvider, slug: string | undefined, key?: 'genres' | 'tags') {
+export function findTaxonomyItem(
+  provider: MangaProvider,
+  slug: string | undefined,
+  key?: 'genres' | 'tags' | 'types',
+) {
   if (!slug) return undefined
   const groups = key
     ? provider.taxonomy.groups.filter((group) => group.key === key)
@@ -37,6 +43,20 @@ export function findTaxonomyItem(provider: MangaProvider, slug: string | undefin
     if (match) return match
   }
   return undefined
+}
+
+// Resolve a comma-separated list of slugs to their taxonomy item ids (unknown
+// slugs are dropped). Used for multi-select genre filters.
+export function findTaxonomyItems(
+  provider: MangaProvider,
+  csv: string | undefined,
+  key?: 'genres' | 'tags' | 'types',
+): string[] {
+  if (!csv) return []
+  return csv
+    .split(',')
+    .map((slug) => findTaxonomyItem(provider, slug.trim(), key)?.id)
+    .filter((id): id is string => Boolean(id))
 }
 
 export function providerCacheTtl(pathname: string, providerId: string | undefined): number | null {

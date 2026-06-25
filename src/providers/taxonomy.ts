@@ -14,15 +14,29 @@ export function defineTaxonomy(items: TaxonomySeed[]): TaxonomyItem[] {
   return items.map((item) => ({ ...item, slug: slugify(item.label) }))
 }
 
-// A dimension whose items you navigate into (genres, tags).
+// A dimension whose items you navigate into (genres, tags). Pass `multiSelect`/
+// `supportsExclude` for advanced providers that accept several genres at once or
+// can negate them.
 export function browseGroup(
   key: 'genres' | 'tags',
   label: string,
   items: TaxonomyItem[],
   sorts: SortOption[],
+  options: { multiSelect?: boolean; supportsExclude?: boolean } = {},
 ): BrowseGroup {
   const param = key === 'genres' ? 'genreId' : 'tagId'
-  return { key, label, mode: 'browse', param, items, sorts }
+  return { key, label, mode: 'browse', param, items, sorts, ...options }
+}
+
+// A content-format dimension (e.g. Manga / Manhwa / Novel). Pass `multiSelect`
+// for providers that accept several formats at once.
+export function typesGroup(
+  label: string,
+  items: TaxonomyItem[],
+  sorts: SortOption[],
+  options: { multiSelect?: boolean } = {},
+): BrowseGroup {
+  return { key: 'types', label, mode: 'browse', param: 'type', items, sorts, ...options }
 }
 
 // A toggleable feed; pass items + param when the feed accepts a secondary filter.

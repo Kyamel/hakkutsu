@@ -12,6 +12,9 @@ export interface Work {
   serializationStatus: string
   publisher?: string
   popularityJp?: number // normalized 0..10 when the provider exposes a usable popularity signal
+  rating?: number // global community rating 0..10 (distinct from JP popularity)
+  year?: string // year of first release, when the provider exposes it
+  type?: string // content format, e.g. "Manga", "Manhwa", "Novel"
   freeEpisodeCount?: number // present only for free-campaign results
 }
 

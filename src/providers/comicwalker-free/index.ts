@@ -21,6 +21,8 @@ export const comicWalkerFreeProvider: MangaProvider = {
       genres: false,
       tags: true,
       new: false,
+      types: false,
+      year: false,
       requiresFilter: false,
     },
     ttl: {

@@ -20,6 +20,8 @@ export const comicWalkerProvider: MangaProvider = {
       genres: true,
       tags: true,
       new: true,
+      types: false,
+      year: false,
       requiresFilter: true,
     },
     ttl: {

@@ -33,7 +33,7 @@ export const SortOptionSchema = z
     label: z.string().openapi({
       example: 'Recently updated',
     }),
-    appliesTo: z.array(z.enum(['genres', 'tags', 'new'])).openapi({
+    appliesTo: z.array(z.enum(['genres', 'tags', 'new', 'types'])).openapi({
       example: ['genres', 'tags'],
       description: 'Browsing dimensions this sort applies to (capability keys).',
     }),
@@ -42,7 +42,7 @@ export const SortOptionSchema = z
 
 export const BrowseGroupSchema = z
   .object({
-    key: z.enum(['genres', 'tags', 'new']).openapi({
+    key: z.enum(['genres', 'tags', 'new', 'types']).openapi({
       example: 'genres',
     }),
     label: z.string().openapi({
@@ -52,9 +52,17 @@ export const BrowseGroupSchema = z
       example: 'browse',
       description: '"browse" lists items to navigate into; "feed" is a toggleable feed.',
     }),
-    param: z.enum(['genreId', 'tagId']).optional().openapi({
+    param: z.enum(['genreId', 'tagId', 'type']).optional().openapi({
       example: 'genreId',
       description: 'Works-query param an item maps to (secondary filter for feed groups).',
+    }),
+    multiSelect: z.boolean().optional().openapi({
+      example: true,
+      description: 'Browse group whose items can be selected several at once.',
+    }),
+    supportsExclude: z.boolean().optional().openapi({
+      example: true,
+      description: 'Browse group whose items can be negated (excluded).',
     }),
     items: z.array(TaxonomyItemSchema),
     sorts: z.array(SortOptionSchema),
@@ -81,6 +89,12 @@ export const ProviderSchema = z
       }),
       new: z.boolean().openapi({
         example: true,
+      }),
+      types: z.boolean().openapi({
+        example: false,
+      }),
+      year: z.boolean().openapi({
+        example: false,
       }),
       requiresFilter: z.boolean().openapi({
         example: true,
@@ -142,6 +156,16 @@ export const WorkSchema = z
     }),
     popularityJp: z.number().min(0).max(10).optional().openapi({
       example: 8.7,
+    }),
+    rating: z.number().min(0).max(10).optional().openapi({
+      example: 7.69,
+      description: 'Global community rating 0..10 (distinct from JP popularity).',
+    }),
+    year: z.string().optional().openapi({
+      example: '1999',
+    }),
+    type: z.string().optional().openapi({
+      example: 'Manga',
     }),
     freeEpisodeCount: z.number().int().optional().openapi({
       example: 3,
@@ -259,7 +283,8 @@ export const WorksQuerySchema = z.object({
       name: 'genre',
       in: 'query',
     },
-    example: 'fantasy',
+    example: 'action,romance',
+    description: 'Genre slug(s), comma-separated for multi-select providers.',
   }),
   genreId: z.string().optional().openapi({
     param: {
@@ -267,6 +292,38 @@ export const WorksQuerySchema = z.object({
       in: 'query',
     },
     example: '018a262f-986a-7cca-8c8e-4c8d4b229a94',
+    description: 'Genre id(s), comma-separated for multi-select providers.',
+  }),
+  excludeGenre: z.string().optional().openapi({
+    param: {
+      name: 'excludeGenre',
+      in: 'query',
+    },
+    example: 'yaoi,yuri',
+    description: 'Genre slug(s) to exclude, comma-separated.',
+  }),
+  excludeGenreId: z.string().optional().openapi({
+    param: {
+      name: 'excludeGenreId',
+      in: 'query',
+    },
+    example: '',
+    description: 'Genre id(s) to exclude, comma-separated.',
+  }),
+  type: z.string().optional().openapi({
+    param: {
+      name: 'type',
+      in: 'query',
+    },
+    example: 'manhwa,manhua',
+    description: 'Content-format filter; slug(s), comma-separated for multi-select.',
+  }),
+  year: z.string().optional().openapi({
+    param: {
+      name: 'year',
+      in: 'query',
+    },
+    example: '2020',
   }),
   tag: z.string().optional().openapi({
     param: {

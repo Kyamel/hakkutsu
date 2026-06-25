@@ -9,7 +9,7 @@ export interface TaxonomyItem {
 
 // Browsing dimensions a provider can expose; each key doubles as a capability
 // flag. A sort declares which dimensions it applies to via these keys.
-export type BrowseKey = 'genres' | 'tags' | 'new'
+export type BrowseKey = 'genres' | 'tags' | 'new' | 'types'
 
 export interface SortOption {
   value: string
@@ -25,7 +25,11 @@ export interface BrowseGroup {
   mode: 'browse' | 'feed'
   // browse: the works-query param an item id maps to.
   // feed: the param a secondary-filter item maps to (omitted for a bare toggle).
-  param?: 'genreId' | 'tagId'
+  param?: 'genreId' | 'tagId' | 'type'
+  // browse groups only: the UI may select several items at once...
+  multiSelect?: boolean
+  // ...and may let each item be negated (e.g. exclude a genre).
+  supportsExclude?: boolean
   items: TaxonomyItem[]
   sorts: SortOption[]
 }
@@ -42,6 +46,8 @@ export interface ProviderSummary {
     genres: boolean
     tags: boolean
     new: boolean
+    types: boolean
+    year: boolean
     requiresFilter: boolean
   }
   ttl: {
@@ -57,7 +63,11 @@ export interface Pagination {
 
 export interface SearchWorksParams extends Pagination {
   genreId?: string
+  genreIds?: string[] // multi-select include (advanced providers)
+  excludeGenreIds?: string[] // genres to exclude (advanced providers)
   tagId?: string
+  typeIds?: string[] // content-format filter (multi-select)
+  year?: string // exact release year filter
   feed?: string
   sortBy: string
 }

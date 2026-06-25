@@ -26,6 +26,8 @@ export const nicoProvider: MangaProvider = {
       genres: true,
       tags: false,
       new: false,
+      types: false,
+      year: false,
       requiresFilter: false,
     },
     ttl: {

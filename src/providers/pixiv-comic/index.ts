@@ -23,6 +23,8 @@ export const pixivComicProvider: MangaProvider = {
       genres: true,
       tags: false,
       new: true,
+      types: false,
+      year: false,
       requiresFilter: true,
     },
     ttl: {
