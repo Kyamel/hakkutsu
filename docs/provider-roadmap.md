@@ -56,6 +56,20 @@ ComicWalker is intentionally split into two providers now:
 That split is a practical test of the provider contract. The API route handlers
 do not need separate ComicWalker-free branching for search.
 
+## Runtime limitations
+
+Pixiv Comic is implemented in `src/providers/pixiv-comic/`, but is not
+registered in production right now. Its API responds locally from a normal Node
+request with browser-like headers, but returns `403` from Cloudflare Workers
+egress for both category and recent-update endpoints. Headers are not enough to
+fix that; it appears to be upstream bot/datacenter filtering.
+
+To enable Pixiv Comic safely, we need one of these:
+
+- A documented upstream API/auth path that allows server-side requests.
+- A non-Workers proxy/origin that Pixiv accepts, with caching and rate limits.
+- A different public source for Pixiv Comic metadata.
+
 ## Popularity signal idea
 
 The useful discovery view is not just "what exists in Japan"; it is "what is

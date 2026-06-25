@@ -2,7 +2,6 @@ import { comicWalkerProvider } from './comicwalker/index.js'
 import { comicWalkerFreeProvider } from './comicwalker-free/index.js'
 import { mangaUpdatesProvider } from './mangaupdates/index.js'
 import { nicoProvider } from './nico/index.js'
-import { pixivComicProvider } from './pixiv-comic/index.js'
 import type { MangaProvider, ProviderSummary } from './types.js'
 
 // Registry: the single shared touch-point. To add a provider, create its folder
@@ -10,9 +9,10 @@ import type { MangaProvider, ProviderSummary } from './types.js'
 const providers: MangaProvider[] = [
   comicWalkerProvider,
   comicWalkerFreeProvider,
-  pixivComicProvider,
   nicoProvider,
   //mangaUpdatesProvider,
+  // pixiv-comic is implemented but intentionally not registered: Pixiv's API
+  // returns 403 to Cloudflare Workers egress even with browser-like headers.
 ]
 const providersById = new Map<string, MangaProvider>(providers.map((provider) => [provider.summary.id, provider]))
 
