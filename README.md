@@ -4,6 +4,10 @@ Discover manga on [comic-walker](https://comic-walker.com) and check whether
 [MangaDex](https://mangadex.org) already has it translated — and how stale each
 language is.
 
+## Live app
+
+https://hakkutsu.lucascamelo03.workers.dev
+
 ## Run
 
 ```
@@ -46,6 +50,7 @@ The app deploys as one Cloudflare Worker:
 - API routes run in `src/worker.ts` under `/api`.
 - Static frontend files are uploaded from `public/` and served directly by
   Cloudflare Workers assets.
+- Production runs at <https://hakkutsu.lucascamelo03.workers.dev>.
 
 Deploy manually with:
 
