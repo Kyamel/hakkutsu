@@ -1,6 +1,7 @@
 # dev
 .yarn/
 !.yarn/releases
+.wrangler/
 .vscode/*
 !.vscode/launch.json
 !.vscode/*.code-snippets
