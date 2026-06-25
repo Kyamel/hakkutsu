@@ -44,7 +44,7 @@ async function fetchWith<T>(
       }
 
       if (!res.ok) {
-        lastError = `${init.method ?? 'GET'} ${url} -> ${res.status}`
+        lastError = `${init.method ?? 'GET'} ${url} -> ${res.status}${await errorContext(res)}`
         if (attempt < maxAttempts && shouldRetry(res.status)) {
           await delay(retryDelayMs(res, attempt))
           continue
@@ -59,6 +59,20 @@ async function fetchWith<T>(
   }
 
   throw new HttpError(502, lastError ?? `${init.method ?? 'GET'} ${url} failed`)
+}
+
+async function errorContext(res: Response): Promise<string> {
+  const details = [
+    res.headers.get('x-hakkutsu-native-fetch') ? `native=${res.headers.get('x-hakkutsu-native-fetch')}` : null,
+    res.headers.get('x-hakkutsu-native-request') ? `request=${res.headers.get('x-hakkutsu-native-request')}` : null,
+    res.headers.get('content-type') ? `content-type=${res.headers.get('content-type')}` : null,
+  ].filter(Boolean)
+
+  const body = await res.clone().text().catch(() => '')
+  const preview = body.replace(/\s+/g, ' ').trim().slice(0, 300)
+  if (preview) details.push(`body=${preview}`)
+
+  return details.length ? ` (${details.join('; ')})` : ''
 }
 
 function shouldRetry(status: number): boolean {

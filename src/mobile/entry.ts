@@ -56,7 +56,7 @@ async function nativeHttpFetch(input: RequestInfo | URL, init?: RequestInit): Pr
 
   return new Response(normalizeNativeBody(response.data), {
     status: response.status,
-    headers: response.headers,
+    headers: nativeResponseHeaders(response.headers, headers),
   })
 }
 
@@ -81,9 +81,31 @@ function nativeHeaders(input: RequestInfo | URL, init: RequestInit | undefined, 
   return Object.fromEntries(headers.entries())
 }
 
+function nativeResponseHeaders(responseHeaders: Record<string, string>, requestHeaders: Record<string, string>): Headers {
+  const headers = new Headers(responseHeaders)
+  headers.set('x-hakkutsu-native-fetch', 'capacitor-http')
+  headers.set('x-hakkutsu-native-request', nativeRequestSummary(requestHeaders))
+  return headers
+}
+
+function nativeRequestSummary(headers: Record<string, string>): string {
+  const interesting = ['accept', 'accept-language', 'origin', 'referer', 'x-cap-user-agent', 'x-requested-with']
+  return interesting
+    .filter((key) => headers[key])
+    .map((key) => `${key}:${headers[key]}`)
+    .join('|')
+    .slice(0, 600)
+}
+
 function appendHeaders(target: Headers, source: HeadersInit | undefined): void {
   if (!source) return
-  new Headers(source).forEach((value, key) => {
-    target.set(key, value)
-  })
+  if (source instanceof Headers) {
+    source.forEach((value, key) => target.set(key, value))
+    return
+  }
+  if (Array.isArray(source)) {
+    for (const [key, value] of source) target.set(key, value)
+    return
+  }
+  for (const [key, value] of Object.entries(source)) target.set(key, value)
 }
