@@ -13,7 +13,7 @@ dev.route('/', app) // /api/* handled by the shared app
 dev.use('/*', serveStatic({ root: './public' }))
 dev.get('*', serveStatic({ path: './public/index.html' })) // SPA fallback
 
-const port = Number(process.env.PORT) || 8788
+const port = Number(process.env.PORT) || 8787
 serve({ fetch: dev.fetch, port }, (info) => {
   console.log(`hakkutsu dev (node) → http://localhost:${info.port}`)
 })

@@ -11,18 +11,28 @@ https://hakkutsu.lucascamelo03.workers.dev
 ## Run
 
 ```
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ```
 open http://localhost:8787
 ```
 
-`npm run dev` runs the Cloudflare Workers runtime locally with Wrangler and
-serves `public/` as static assets.
+`pnpm dev` runs the shared Hono app on Node and serves `public/` as static
+assets.
 
 ### Local Worker TLS limitation
+
+`pnpm dev` runs the app through the shared Hono server on Node so upstream
+provider requests use Node's local TLS trust store. This is the recommended
+local mode when testing `/api/works` and MangaDex matching.
+
+To test the actual Cloudflare Workers runtime locally, run:
+
+```
+pnpm dev:worker
+```
 
 The ComicWalker endpoints work after deploy, but may fail in local Wrangler dev
 with a `workerd` TLS error like:
@@ -32,14 +42,12 @@ TLS peer's certificate is not trusted; reason = unable to get local issuer certi
 ```
 
 This is a local `workerd` certificate validation issue. The same request worked
-in the old Node dev server because Node uses a different local trust store, and
-it also works in the deployed Cloudflare Worker.
-
-Use `npm run dev` for static assets and API routes that do not call
-ComicWalker. For `/api/works`, test on the edge with the staging Worker:
+in the Node dev server because Node uses a different local trust store, and it
+also works in the deployed Cloudflare Worker. If you need to test the edge
+runtime for `/api/works`, use the staging Worker:
 
 ```
-npm run deploy:staging
+pnpm deploy:staging
 ```
 
 ## Deploy
@@ -54,21 +62,21 @@ The app deploys as one Cloudflare Worker:
 Deploy manually with:
 
 ```
-npm run deploy
+pnpm deploy
 ```
 
 For edge testing without touching production, deploy the staging Worker:
 
 ```
-npm run deploy:staging
+pnpm deploy:staging
 ```
 
 Then test the staging URL printed by Wrangler, for example
 `https://hakkutsu-staging.<your-subdomain>.workers.dev/api/works?tag=fantasy&limit=1`.
 
 Automatic deploys run from `.github/workflows/deploy-worker.yml` on pushes to
-`main`. The workflow runs `npm ci`, `npm run build`, then
-`npm run deploy` to target the top-level production Worker explicitly.
+`main`. The workflow runs `pnpm install --frozen-lockfile`, `pnpm build`, then
+`pnpm deploy` to target the top-level production Worker explicitly.
 Add these GitHub repository secrets before enabling the workflow:
 
 - `CLOUDFLARE_ACCOUNT_ID`
@@ -95,7 +103,7 @@ It does not call the deployed Cloudflare Worker for API routes:
 Build and sync the Android project:
 
 ```
-npm run build:mobile
+pnpm build:mobile
 ```
 
 Build a local debug APK:

@@ -28,10 +28,12 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Resolve release tag
         run: |
@@ -44,9 +46,9 @@ jobs:
           fi
           echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run build:mobile
+      - run: pnpm build:mobile
 
       - name: Prepare signing keystore
         if: env.HAS_ANDROID_SIGNING == 'true'

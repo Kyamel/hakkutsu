@@ -1,13 +1,22 @@
 {
   "name": "hakkutsu",
   "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  },
   "scripts": {
-    "dev": "wrangler dev",
-    "dev:remote": "wrangler dev --remote",
+    "dev": "tsx watch src/dev/server.ts",
     "dev:node": "tsx watch src/dev/server.ts",
+    "dev:worker": "wrangler dev",
+    "dev:remote": "wrangler dev --remote",
     "build": "tsc --noEmit",
     "build:mobile:web": "vite build --config vite.mobile.config.ts && cp public/app.js public/styles.css dist-capacitor/",
-    "build:mobile": "npm run build && npm run build:mobile:web && cap sync android",
+    "build:mobile": "pnpm build && pnpm build:mobile:web && cap sync android",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy": "wrangler deploy --env="
   },
